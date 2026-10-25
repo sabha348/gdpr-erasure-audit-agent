@@ -1,0 +1,10 @@
+# secrets
+.env
+# Python caches
+__pycache__/
+*.pyc
+# generated files (kept out of the repository and code.zip; output.csv is a deliverable and stays)
+output.diagnostics.jsonl
+*.diagnostics.jsonl
+code/evaluation/results/
+code/cache/
