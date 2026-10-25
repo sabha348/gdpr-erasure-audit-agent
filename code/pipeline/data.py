@@ -147,12 +147,14 @@ class Dataset:
                 t = ts(link["activity"]["event_time"])
                 if not (cap <= t <= cap + LINK_WINDOW):
                     continue
-                seen = bool(transcript) and (link["resource_id"].lower() in transcript or link["email"] in transcript
-                                             or link["user_id"] in transcript)
+                # Confirmed only when the screen shows the linked person; the resource id alone is not enough
+                # (evidence_60 shows marketing_001 for a different, unknown person than the catalog row names).
+                seen = bool(transcript) and (link["email"] in transcript or link["user_id"] in transcript)
+                contradicted = bool(transcript) and not seen and link["resource_id"].lower() in transcript
                 confidence = "medium" if seen else "low"
                 fields_ = {"screen": stem, "assumed_state": rule[1] if rule else None,
                            "category_hint": rule[2] if rule else None, "confidence": confidence,
-                           "transcription_confirms_link": seen,
+                           "transcription_confirms_link": seen, "transcription_contradicts_link": contradicted,
                            "basis": f"file name + {link['activity']['activity_id']}",
                            "email": link["email"], "user_id": link["user_id"]}
                 raw = {"obs_id": f"{doc['file_id']}#screen", "source": "image_fallback",

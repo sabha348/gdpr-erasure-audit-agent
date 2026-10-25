@@ -373,6 +373,9 @@ class Pipeline:
             for phase, ops in (("FINDING", f), ("REMEDIATION", r), ("VERIFICATION", v)):
                 for op, st in ops:
                     planned.append({"phase": phase, "system_id": system, "resource_id": rid, "operation": op, "state": st})
+            for o in self.ds.by_resource.get(rid, []):
+                if o.raw["source"] == "image_fallback" and o.raw["fields"].get("transcription_contradicts_link")                         and o.file_captured_at <= q["audit_at"]:
+                    diag["low_confidence"].append(f"state:{rid}:screenshot_contradicts_catalog:{o.file_id}")
             for level in ("low", "medium"):
                 if any(a.confidence == level for a in asserts):
                     diag["low_confidence"].append(f"state:{rid}:screenshot_{level}")
