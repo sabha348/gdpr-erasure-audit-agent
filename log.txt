@@ -249,3 +249,24 @@ repo_root=C:\Users\HP\Downloads\Hackerrank\hackerrank-orchestrate-october26
 worktree=main
 parent_agent=none
 
+## [2026-10-25T11:05:00Z] Add code/README.md (setup and approach)
+
+User Prompt (verbatim, secrets redacted):
+in the code i need to keep a readme as well What to include
+README - setup instructions and approach overview
+
+Agent Response Summary:
+Wrote code/README.md for evaluators and the AI interviewer: setup (requirements, optional .env with LLM_PROVIDER/GEMINI_API_KEY), run commands (extract, main, validate, sample scorer, sweep, options, --show, packaging), approach overview (extraction formats; per-case classification, identity, linking incl. the workflow join, state at audit_at, policy, steps), sample results, model usage and layout. Verified the referenced --help and that code.zip includes code/README.md; committed it on solution/deletion-audit. Screenshot retry: evidence_14 and evidence_46 now transcribed, evidence_60 still retrying.
+
+Actions:
+* Created code/README.md; ran code/main.py --help and code/package_submission.py (test zip removed)
+* git add/commit on solution/deletion-audit
+
+Context:
+tool=Claude Code
+model=claude-opus-5-5
+branch=solution/deletion-audit
+repo_root=C:\Users\HP\Downloads\Hackerrank\hackerrank-orchestrate-october26
+worktree=main
+parent_agent=none
+
