@@ -71,3 +71,98 @@ class DeletionRequest(BaseModel):
     def as_row(self) -> dict[str, str]:
         """The CSV-row shape the pipeline consumes."""
         return {k: (v.value if isinstance(v, StrEnum) else v) for k, v in self.model_dump().items()}
+
+
+# ------------------------------------------------------------------------------------------- audit results
+class Classification(BaseModel):
+    model_config = ConfigDict(extra="allow")
+
+    is_deletion: bool
+    method: str = Field(description="rules | llm | rules_fallback")
+    confidence: str
+
+
+class ResourceAssessment(BaseModel):
+    category: str
+    action: str = Field(description="Policy action from deletion_rules.csv: DELETE, REDACT, ANONYMIZE, RETAIN")
+    state: str | None = Field(None, description="Reconstructed state at audit_at")
+    evidence: list[str] = Field(default_factory=list)
+
+
+class Diagnostics(BaseModel):
+    """Why the agent decided what it decided; every uncertain decision is listed in low_confidence."""
+    model_config = ConfigDict(extra="allow")
+
+    subject: str | None = Field(None, description="Resolved stable user_id")
+    classification: Classification
+    account: dict | None = None
+    resources: dict[str, ResourceAssessment] = Field(default_factory=dict)
+    low_confidence: list[str] = Field(default_factory=list)
+    error: str | None = None
+
+
+class Usage(BaseModel):
+    llm_calls: int = 0
+    cached_llm_calls: int = 0
+    input_tokens: int = 0
+    output_tokens: int = 0
+    cost_usd: float = 0.0
+
+
+class AuditResult(BaseModel):
+    case_id: str
+    deletion_status: DeletionStatus
+    steps: list[Step]
+    diagnostics: Diagnostics
+    usage: Usage = Field(default_factory=Usage)
+    duration_ms: float
+
+    @property
+    def remediation_steps(self) -> list[Step]:
+        return [s for s in self.steps if s.phase is Phase.REMEDIATION]
+
+
+# ------------------------------------------------------------------------------------------- lifecycle
+class AuditState(StrEnum):
+    """RUNNING -> COMPLETED (nothing to remediate) | AWAITING_APPROVAL -> REMEDIATION_ISSUED | REJECTED | EXPIRED;
+    any step can end in FAILED."""
+    RUNNING = "RUNNING"
+    COMPLETED = "COMPLETED"
+    AWAITING_APPROVAL = "AWAITING_APPROVAL"
+    REMEDIATION_ISSUED = "REMEDIATION_ISSUED"
+    REJECTED = "REJECTED"
+    EXPIRED = "EXPIRED"
+    FAILED = "FAILED"
+
+
+class ApprovalDecision(StrEnum):
+    APPROVE = "approve"
+    REJECT = "reject"
+
+
+class Approval(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    decision: ApprovalDecision
+    approver: str = Field(min_length=1, max_length=200, description="Who decided (user id or email)")
+    comment: str = Field("", max_length=2000)
+
+
+class RemediationTicket(BaseModel):
+    ticket_id: str
+    executor: str = Field(description="Which RemediationExecutor issued it, e.g. dry_run")
+    issued_at: str
+    steps: list[Step]
+
+
+class AuditRecord(BaseModel):
+    audit_id: str
+    state: AuditState
+    request: DeletionRequest
+    result: AuditResult | None = None
+    approval: Approval | None = None
+    approved_at: str | None = None
+    remediation: RemediationTicket | None = None
+    error: str | None = None
+    created_at: str
+    updated_at: str
