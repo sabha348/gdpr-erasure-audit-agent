@@ -1,0 +1,58 @@
+# Local stack: Temporal dev server (with UI) + worker + API.
+#   make up        (or: docker compose up --build -d)
+#   API  http://localhost:8000/docs      Temporal UI  http://localhost:8233
+name: erasure-audit
+
+x-app: &app
+  image: erasure-audit:dev
+  build: .
+  env_file:
+    - path: .env            # optional: GEMINI_API_KEY / GOOGLE_GENERATIVE_AI_API_KEY, ERASURE_CLASSIFIER=llm, ...
+      required: false
+  environment: &app-env
+    ERASURE_EXECUTION_MODE: temporal
+    TEMPORAL_ADDRESS: temporal:7233
+    ERASURE_OUTBOX_PATH: /data/outbox/remediation_outbox.jsonl
+  volumes:
+    - outbox:/data/outbox
+  restart: unless-stopped
+
+services:
+  temporal:
+    image: temporalio/temporal:1.10.1
+    command: ["server", "start-dev", "--ip", "0.0.0.0", "--ui-ip", "0.0.0.0", "--db-filename", "/home/temporal/temporal.db"]
+    ports:
+      - "7233:7233"
+      - "8233:8233"
+    volumes:
+      - temporal-data:/home/temporal   # image dir owned by the temporal user, so the volume is writable
+    healthcheck:
+      test: ["CMD", "temporal", "operator", "cluster", "health", "--address", "127.0.0.1:7233"]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+      start_period: 5s
+
+  worker:
+    <<: *app
+    command: ["erasure-audit", "worker"]
+    healthcheck:
+      disable: true
+    depends_on:
+      temporal:
+        condition: service_healthy
+
+  api:
+    <<: *app
+    command: ["erasure-audit", "serve", "--host", "0.0.0.0", "--port", "8000"]
+    ports:
+      - "8000:8000"
+    depends_on:
+      temporal:
+        condition: service_healthy
+      worker:
+        condition: service_started
+
+volumes:
+  temporal-data:
+  outbox:

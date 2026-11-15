@@ -45,8 +45,9 @@ def _now() -> str:
 
 
 def _cause(err: BaseException) -> str:
-    while getattr(err, "cause", None) is not None:
-        err = err.cause
+    cause = getattr(err, "cause", None)
+    while cause is not None:
+        err, cause = cause, getattr(cause, "cause", None)
     return str(err)
 
 
@@ -57,6 +58,7 @@ class ErasureAuditWorkflow:
         self._approval: Approval | None = None
 
     def _update(self, **fields) -> AuditRecord:
+        assert self._record is not None
         self._record = self._record.model_copy(update={**fields, "updated_at": _now()})
         return self._record
 
@@ -96,7 +98,7 @@ class ErasureAuditWorkflow:
             return self._update(state=AuditState.EXPIRED, error="no approval decision before the timeout")
 
         approval = self._approval
-        self._update(approval=approval, approved_at=_now())
+        assert approval is not None
         if approval.decision is ApprovalDecision.REJECT:
             return self._update(state=AuditState.REJECTED)
         try:
@@ -112,6 +114,7 @@ class ErasureAuditWorkflow:
         """Human decision. Only the first decision on an AWAITING_APPROVAL audit counts; others are ignored."""
         if self._record and self._record.state is AuditState.AWAITING_APPROVAL and self._approval is None:
             self._approval = approval
+            self._update(approval=approval, approved_at=_now())  # visible to queries before remediation finishes
         else:
             workflow.logger.warning("approval signal ignored", extra={"state": getattr(self._record, "state", None)})
 

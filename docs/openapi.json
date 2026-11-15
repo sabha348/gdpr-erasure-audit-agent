@@ -363,6 +363,7 @@
         "type": "object"
       },
       "Operation": {
+        "description": "Written out (not generated) so type checkers see the members; a test keeps it equal to contract.OPERATIONS.",
         "enum": [
           "REPORT_REMAINING_RECORD",
           "REPORT_EXPOSED_PII",
@@ -910,6 +911,9 @@
               }
             },
             "description": "Successful Response"
+          },
+          "202": {
+            "description": "Decision recorded; remediation still being issued (poll GET)"
           },
           "409": {
             "description": "Audit is not awaiting approval"

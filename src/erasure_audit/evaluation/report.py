@@ -111,8 +111,10 @@ def _phase_f1(score: dict, phase: str) -> float:
 def render(results: list[CaseResult], by_slice: dict, meta: dict, cv: dict | None = None) -> str:
     out = ["# Evaluation results", "",
            f"Generated {meta['generated_at']} at commit `{meta['git_commit']}`. Classifier: "
-           f"`{meta['options']['classifier']}`; LLM provider: `{meta['llm_provider']}`"
-           + (f" (`{meta['llm_model']}`)" if meta["llm_model"] else "") + f". Pipeline start-up: {meta['startup_s']} s.",
+           f"`{meta['options']['classifier']}`"
+           + (f" (`{meta['llm_provider']}` / `{meta['llm_model']}`)" if meta["options"]["classifier"] == "llm" else
+              " (no model calls in the per-request path)")
+           + f". Pipeline start-up: {meta['startup_s']} s.",
            "", "## Summary", "", *summary_table(by_slice), "",
            "Cost is at paid-tier list price (`extraction/llm.py` PRICING); the Gemini free tier bills $0. "
            "Latency is per case inside a warm process (dataset and evidence loaded once at start-up) and includes "
