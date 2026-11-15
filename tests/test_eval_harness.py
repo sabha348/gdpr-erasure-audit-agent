@@ -1,9 +1,9 @@
-from conftest import DATASET
 from erasure_audit.evaluation.cases import load_cases
 from erasure_audit.evaluation.cv import leave_one_out
 from erasure_audit.evaluation.report import write
 from erasure_audit.evaluation.runner import run_cases, summarise_by_slice
 from erasure_audit.extraction.llm import capture_usage, record_usage
+from paths import DATASET
 
 
 def test_usage_capture_is_scoped():

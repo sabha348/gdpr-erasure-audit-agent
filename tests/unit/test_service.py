@@ -1,10 +1,10 @@
 import pytest
 
-from conftest import DATASET
 from erasure_audit.models import Approval, DeletionRequest
 from erasure_audit.pipeline import read_requests
 from erasure_audit.remediation import DryRunExecutor
 from erasure_audit.service import AuditService
+from paths import DATASET
 
 
 @pytest.fixture(scope="module")

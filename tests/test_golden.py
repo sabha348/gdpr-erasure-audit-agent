@@ -5,10 +5,10 @@ import os
 import subprocess
 import sys
 
-from conftest import DATASET, GOLDEN
 from erasure_audit.contract import read_csv
 from erasure_audit.evaluation.score import evaluate
 from erasure_audit.pipeline import read_requests, run_cases, write_output
+from paths import DATASET, GOLDEN
 
 # Baseline measured at the hackathon tag and after the determinism fix; raise it when the agent improves.
 BASELINE = {"status_accuracy": 1.0, "step_f1": 0.943, "exact_cases": 18}

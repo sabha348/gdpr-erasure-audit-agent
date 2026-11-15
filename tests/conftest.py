@@ -1,13 +1,10 @@
 from __future__ import annotations
 
 import os
-from pathlib import Path
 
 import pytest
 
-ROOT = Path(__file__).resolve().parent.parent
-DATASET = ROOT / "dataset"
-GOLDEN = ROOT / "tests" / "golden"
+from paths import DATASET
 
 
 @pytest.fixture(scope="session", autouse=True)

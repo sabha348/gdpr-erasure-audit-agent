@@ -2,10 +2,10 @@
 public dataset; the fake model's answer is arbitrary and only exercises caching, fallback and disagreement."""
 import pytest
 
-from conftest import DATASET
 from erasure_audit.contract import read_csv
 from erasure_audit.extraction import llm
 from erasure_audit.pipeline import classify as clf
+from paths import DATASET
 
 TEXT = read_csv(DATASET / "sample_deletion_requests.csv")[0]["request_text"]
 

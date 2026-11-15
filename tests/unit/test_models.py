@@ -1,6 +1,6 @@
-from conftest import DATASET
 from erasure_audit.models import AuditResult, Diagnostics, Step
 from erasure_audit.pipeline import read_requests
+from paths import DATASET
 
 
 def test_every_pipeline_result_fits_the_typed_models(pipeline):
