@@ -6,7 +6,6 @@ import subprocess
 import sys
 
 from conftest import DATASET, GOLDEN
-
 from erasure_audit.contract import read_csv
 from erasure_audit.evaluation.score import evaluate
 from erasure_audit.pipeline import read_requests, run_cases, write_output
