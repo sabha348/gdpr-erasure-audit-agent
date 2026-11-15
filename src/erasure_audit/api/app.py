@@ -24,11 +24,13 @@ from .routes import router
 log = logging.getLogger("erasure_audit.api")
 
 
-def build_backend(settings: Settings, service: AuditService) -> AuditBackend:
-    if settings.execution_mode == "sync":
-        from .store import InMemoryAuditStore
-        return SyncBackend(service, InMemoryAuditStore(), DryRunExecutor(settings.remediation_outbox))
-    raise NotImplementedError("ERASURE_EXECUTION_MODE=temporal arrives with the Temporal workflows (M3)")
+async def build_backend(settings: Settings, service: AuditService) -> AuditBackend:
+    if settings.execution_mode == "temporal":
+        from ..workflows.worker import connect
+        from .temporal_backend import TemporalBackend
+        return TemporalBackend(await connect(settings), settings)
+    from .store import InMemoryAuditStore
+    return SyncBackend(service, InMemoryAuditStore(), DryRunExecutor(settings.remediation_outbox))
 
 
 def create_app(settings: Settings | None = None, *, service: AuditService | None = None,
@@ -42,7 +44,7 @@ def create_app(settings: Settings | None = None, *, service: AuditService | None
         svc = service or await anyio.to_thread.run_sync(
             lambda: AuditService(settings.dataset_dir, Options(classifier=settings.classifier)))
         app.state.service = svc
-        app.state.backend = backend or build_backend(settings, svc)
+        app.state.backend = backend or await build_backend(settings, svc)
         log.info("ready", extra={"backend": app.state.backend.name, "startup_s": round(svc.startup_s, 3),
                                  "classifier": svc.options.classifier})
         yield
