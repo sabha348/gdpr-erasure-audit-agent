@@ -6,6 +6,22 @@
 
 Ranked 1,073 of 4,094 in HackerRank Orchestrate (Oct 2026). Submission preserved at tag `hackerrank-orchestrate-submission`. Everything after that tag is post-hackathon work.
 
+## CI status
+
+The GitHub Actions pipeline (`.github/workflows/ci.yml`) has not run yet: GitHub has not started the jobs
+because of an account billing lock, not because of a failing check, which is why the badge above is red. It
+will run unchanged once that is resolved. Until then, the same steps were run locally on 2026-11-15 at commit
+`a46424c`:
+
+| CI job | local command | result |
+|---|---|---|
+| lint and type-check | `ruff check src tests scripts`, `mypy` | clean, 22 files type-checked |
+| tests (Python 3.11 / 3.12 / 3.13) | `pytest --cov=erasure_audit` | 82 passed on each, 81% coverage |
+| evaluation gate | `erasure-audit eval --cv --min-verdict-accuracy 1.0 --min-step-f1 0.943` | passed: verdict 100%, step F1 94.3% |
+| image and compose smoke test | `docker build`, golden output in the container, `docker compose up --wait`, `scripts/smoke.py` | output byte-identical, stack healthy, SMOKE PASSED |
+
+To reproduce: `make lint test eval`, then `make up smoke`.
+
 ## What it does
 
 A deletion workflow can report *Complete* while a person's data is still in database replicas, logs, exports,
