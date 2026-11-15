@@ -20,12 +20,12 @@ COPY --from=build /wheels /wheels
 RUN pip install --no-index --find-links /wheels "erasure-audit[api,worker,llm]" && rm -rf /wheels
 WORKDIR /app
 COPY --chown=app:app dataset ./dataset
-RUN mkdir -p /data/cache && chown app:app /data/cache
+RUN mkdir -p /data/cache /data/outbox && chown app:app /data/cache /data/outbox
 # Warm the extraction cache at build time (deterministic parsers only), so containers start in about a second.
 # A cache volume mounted on /data/cache shadows it, and the cache is rebuilt on first use.
 USER app
 RUN erasure-audit extract --no-llm > /dev/null
-VOLUME ["/data/cache"]
+VOLUME ["/data/cache", "/data/outbox"]
 EXPOSE 8000
 HEALTHCHECK --interval=10s --timeout=3s --start-period=20s --retries=5 \
     CMD python -c "import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://127.0.0.1:8000/healthz', timeout=2).status == 200 else 1)"
