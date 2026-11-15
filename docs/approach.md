@@ -1,5 +1,11 @@
 # Ghost Data Still Exists: deletion-audit agent
 
+> **Historical document.** This is the hackathon README, kept as it was at tag `hackerrank-orchestrate-submission`.
+> The approach (sections "Approach" and "Results") still holds. The setup and run commands and the layout
+> changed when the code became the `erasure_audit` package: `python code/main.py` is now `erasure-audit run`,
+> `code/evaluation/main.py` is now `erasure-audit eval`, and `code/cache/` is now `$ERASURE_CACHE_DIR`. See the
+> root README for the current commands.
+
 For every request in `dataset/deletion_requests.csv`, this system decides whether the person asked for deletion.
 If they did, it finds every record that still belongs to them and works out each record's state at `audit_at`.
 It applies `deletion_rules.csv` and writes `output.csv`. That file holds the status (`COMPLETE`, `INCOMPLETE` or
