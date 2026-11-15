@@ -45,8 +45,9 @@ def _now() -> str:
 
 
 def _cause(err: BaseException) -> str:
-    while getattr(err, "cause", None) is not None:
-        err = err.cause
+    cause = getattr(err, "cause", None)
+    while cause is not None:
+        err, cause = cause, getattr(cause, "cause", None)
     return str(err)
 
 
@@ -57,6 +58,7 @@ class ErasureAuditWorkflow:
         self._approval: Approval | None = None
 
     def _update(self, **fields) -> AuditRecord:
+        assert self._record is not None
         self._record = self._record.model_copy(update={**fields, "updated_at": _now()})
         return self._record
 
@@ -96,6 +98,7 @@ class ErasureAuditWorkflow:
             return self._update(state=AuditState.EXPIRED, error="no approval decision before the timeout")
 
         approval = self._approval
+        assert approval is not None
         if approval.decision is ApprovalDecision.REJECT:
             return self._update(state=AuditState.REJECTED)
         try:

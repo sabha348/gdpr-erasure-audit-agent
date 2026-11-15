@@ -70,7 +70,7 @@ def plan_violations(steps: list[dict]) -> list[str]:
     verifications = {(s.get("operation"), s.get("system_id"), s.get("resource_id"))
                      for s in steps if s.get("phase") == "VERIFICATION"}
     for s in rem:
-        need = (REMEDIATION_TO_VERIFICATION.get(s.get("operation")), s.get("system_id"), s.get("resource_id"))
+        need = (REMEDIATION_TO_VERIFICATION.get(str(s.get("operation"))), s.get("system_id"), s.get("resource_id"))
         if need not in verifications:
             out.append(f"{s.get('operation')} {s.get('resource_id')} has no {need[0]}")
     phases = [s.get("phase") for s in steps]

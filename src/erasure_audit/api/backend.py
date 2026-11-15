@@ -79,6 +79,7 @@ class SyncBackend:
         now = utc_now()
         update = {"approval": approval, "approved_at": now, "updated_at": now}
         if approval.decision is ApprovalDecision.APPROVE:
+            assert record.result is not None  # AWAITING_APPROVAL always carries a result
             ticket = await anyio.to_thread.run_sync(self.executor.issue, audit_id, record.result.remediation_steps,
                                                     approval)
             update |= {"state": AuditState.REMEDIATION_ISSUED, "remediation": ticket}

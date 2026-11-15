@@ -45,3 +45,9 @@ def test_serialization_is_compact_and_key_ordered():
     text = serialize_steps([step])
     assert " " not in text
     assert list(json.loads(text)[0]) == list(STEP_KEYS)
+
+
+def test_typed_enums_match_the_contract():
+    from erasure_audit.models import Operation, State
+    assert [o.value for o in Operation] == list(OPERATIONS)
+    assert {s.value for s in State} == {state for _, state in OPERATIONS.values()}

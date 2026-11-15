@@ -59,6 +59,7 @@
       "type": "string"
     },
     "Operation": {
+      "description": "Written out (not generated) so type checkers see the members; a test keeps it equal to contract.OPERATIONS.",
       "enum": [
         "REPORT_REMAINING_RECORD",
         "REPORT_EXPOSED_PII",

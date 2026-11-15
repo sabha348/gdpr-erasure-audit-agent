@@ -20,7 +20,7 @@ dependencies = [
 llm = ["google-genai==2.33.0", "anthropic>=0.80.0,<1"]
 api = ["fastapi>=0.115,<1", "uvicorn[standard]>=0.30,<1"]
 worker = ["temporalio>=1.8,<2"]
-dev = ["pytest>=8,<9", "pytest-cov>=5", "pytest-asyncio>=0.24,<2", "ruff>=0.8", "httpx>=0.27,<1",
+dev = ["pytest>=8,<9", "pytest-cov>=5", "pytest-asyncio>=0.24,<2", "ruff>=0.8", "mypy>=1.10", "httpx>=0.27,<1",
        "erasure-audit[api,worker]"]
 
 [project.scripts]
@@ -49,3 +49,17 @@ src = ["src", "tests"]
 [tool.ruff.lint]
 select = ["E", "F", "W", "I", "B", "UP"]
 ignore = ["E501", "E731", "E741", "B008"]
+
+[tool.mypy]
+python_version = "3.11"
+ignore_missing_imports = true
+follow_imports = "silent"
+warn_unused_ignores = true
+# Typed core: everything written after the hackathon. The hackathon pipeline and extraction modules are
+# dict-heavy and covered by the golden tests instead.
+files = [
+    "src/erasure_audit/models.py", "src/erasure_audit/settings.py", "src/erasure_audit/service.py",
+    "src/erasure_audit/remediation.py", "src/erasure_audit/api", "src/erasure_audit/workflows",
+    "src/erasure_audit/pipeline/sources.py", "src/erasure_audit/evaluation/cases.py",
+    "src/erasure_audit/evaluation/metrics.py", "src/erasure_audit/evaluation/runner.py",
+]
