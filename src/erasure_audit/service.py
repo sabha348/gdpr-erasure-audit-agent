@@ -17,6 +17,7 @@ from .contract import read_csv
 from .extraction.llm import capture_usage, summarise_usage
 from .models import AuditResult, DeletionRequest, Diagnostics, Step, Usage
 from .pipeline import Options, Pipeline, build
+from .pipeline.assess import ALL_EVIDENCE, EvidenceScope
 
 
 class AuditService:
@@ -28,10 +29,13 @@ class AuditService:
         self.rules = read_csv(self.dataset_dir / "deletion_rules.csv")
         self.startup_s = time.perf_counter() - started
 
-    def audit(self, request: DeletionRequest) -> AuditResult:
+    def audit(self, request: DeletionRequest, scope: EvidenceScope = ALL_EVIDENCE,
+              classification: dict | None = None) -> AuditResult:
+        """Full audit in one call (sync mode). The workflow calls it with the scope its collectors returned and
+        the classification its classify activity produced."""
         with capture_usage() as calls:
             t0 = time.perf_counter()
-            status, steps, diag = self.pipeline.assess(request.as_row())
+            status, steps, diag = self.pipeline.assess(request.as_row(), scope, classification)
             duration_ms = (time.perf_counter() - t0) * 1000
         usage = summarise_usage(calls)
         usage.pop("api_retries", None)

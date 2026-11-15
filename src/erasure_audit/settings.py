@@ -18,6 +18,11 @@ local use and `/app` in the container image.
 | ERASURE_CLASSIFIER       | rules      | request classifier used by the service: rules or llm |
 | ERASURE_OUTBOX_PATH      | <cache>/remediation_outbox.jsonl | where the dry-run executor records approved plans |
 | ERASURE_BATCH_LIMIT      | 100        | max requests per batch call                        |
+| TEMPORAL_ADDRESS         | localhost:7233 | Temporal frontend (temporal mode and worker)   |
+| TEMPORAL_NAMESPACE       | default    | Temporal namespace                                 |
+| TEMPORAL_TASK_QUEUE      | erasure-audit | task queue the worker polls                     |
+| ERASURE_APPROVAL_TIMEOUT_S | 604800   | how long an audit waits for approval before EXPIRED |
+| ERASURE_SUBMIT_WAIT_S    | 10         | temporal mode: how long POST waits for a first verdict |
 | ERASURE_LOG_LEVEL / ERASURE_LOG_JSON | INFO / true | logging                               |
 | EVIDENCE_LLM_THINKING    | low        | Gemini thinking level                              |
 | EVIDENCE_LLM_EFFORT      | medium     | Anthropic effort level                             |
@@ -50,6 +55,11 @@ class Settings(BaseSettings):
     classifier: Literal["rules", "llm"] = Field("rules", validation_alias=AliasChoices("ERASURE_CLASSIFIER"))
     outbox_path: Path | None = Field(None, validation_alias=AliasChoices("ERASURE_OUTBOX_PATH"))
     batch_limit: int = Field(100, ge=1, le=1000, validation_alias=AliasChoices("ERASURE_BATCH_LIMIT"))
+    temporal_address: str = Field("localhost:7233", validation_alias=AliasChoices("TEMPORAL_ADDRESS"))
+    temporal_namespace: str = Field("default", validation_alias=AliasChoices("TEMPORAL_NAMESPACE"))
+    temporal_task_queue: str = Field("erasure-audit", validation_alias=AliasChoices("TEMPORAL_TASK_QUEUE"))
+    approval_timeout_s: int = Field(7 * 24 * 3600, ge=1, validation_alias=AliasChoices("ERASURE_APPROVAL_TIMEOUT_S"))
+    submit_wait_s: float = Field(10.0, ge=0, validation_alias=AliasChoices("ERASURE_SUBMIT_WAIT_S"))
     log_level: str = Field("INFO", validation_alias=AliasChoices("ERASURE_LOG_LEVEL"))
     log_json: bool = Field(True, validation_alias=AliasChoices("ERASURE_LOG_JSON"))
     llm_thinking: str = Field("low", validation_alias=AliasChoices("EVIDENCE_LLM_THINKING"))
