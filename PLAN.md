@@ -1,6 +1,6 @@
 # PLAN — from challenge entry to production-grade service
 
-Status: **approved 2026-11-15.** M1 and M2 merged (PRs #1, #2). M3 done (PR from `upgrade/m3-temporal`); M4 next.
+Status: **approved 2026-11-15.** M1–M3 merged (PRs #1–#3). M4 done (PR from `upgrade/m4-ship`). Open: Gemini prompt-v2 run (free-tier quota), owner-written held-out cases.
 
 ## Decisions taken with the owner (2026-11-15)
 
