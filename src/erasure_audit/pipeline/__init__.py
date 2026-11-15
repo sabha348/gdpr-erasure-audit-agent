@@ -31,7 +31,7 @@ def run_cases(pipeline: Pipeline, requests: list[dict]) -> list[tuple[str, str, 
 
 def write_output(results, path: Path) -> None:
     with open(path, "w", encoding="utf-8", newline="") as f:
-        w = csv.writer(f)
+        w = csv.writer(f, lineterminator="\n")  # same bytes on every OS
         w.writerow(OUTPUT_HEADER)
         for case_id, status, steps, _diag in results:
             w.writerow([case_id, status, serialize_steps(steps)])

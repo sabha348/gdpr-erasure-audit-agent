@@ -144,12 +144,19 @@ class Pipeline:
                         assigned[cid] = (next(iter(c)), label)
                         changed = True
                         break
-                    for acct in c:
+                    for acct in sorted(c):
                         owners[acct].append(cid)
                 else:
-                    for acct, claimants in owners.items():
-                        if len(claimants) == 1 and claimants[0] not in assigned:
-                            assigned[claimants[0]] = (acct, label)
+                    # An account only one case can claim belongs to that case, but only when that case has exactly
+                    # one such account. With two, picking one depended on set iteration order (PYTHONHASHSEED), so
+                    # the case is left to the timing tie-break instead.
+                    singles = collections.defaultdict(list)
+                    for acct, claimants in sorted(owners.items()):
+                        if len(claimants) == 1:
+                            singles[claimants[0]].append(acct)
+                    for cid, accts in singles.items():
+                        if len(accts) == 1:
+                            assigned[cid] = (accts[0], label)
                             changed = True
                             break
 
