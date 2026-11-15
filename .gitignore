@@ -1,10 +1,19 @@
 # secrets
 .env
-# Python caches
+# Python
 __pycache__/
 *.pyc
-# generated files (kept out of the repository and code.zip; output.csv is a deliverable and stays)
-output.diagnostics.jsonl
+*.egg-info/
+.venv/
+venv/
+build/
+dist/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.coverage
+# generated
+.cache/
+eval/results/
 *.diagnostics.jsonl
-code/evaluation/results/
-code/cache/
+/output.csv

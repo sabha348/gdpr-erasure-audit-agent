@@ -1,5 +1,5 @@
 """Named, swappable decisions (docs/DECISIONS.md). Defaults are set from the 32-sample sweep
-(code/evaluation/sweep.py); every alternative stays selectable with `--option name=value`."""
+(`erasure-audit sweep`); every alternative stays selectable with `--option name=value`."""
 from __future__ import annotations
 
 from dataclasses import dataclass, fields, replace
@@ -64,11 +64,11 @@ class Options:
             if getattr(self, f.name) not in CHOICES[f.name]:
                 raise ValueError(f"{f.name}={getattr(self, f.name)!r}; choose from {CHOICES[f.name]}")
 
-    def with_(self, **kw) -> "Options":
+    def with_(self, **kw) -> Options:
         return replace(self, **kw)
 
     @classmethod
-    def parse(cls, pairs: list[str]) -> "Options":
+    def parse(cls, pairs: list[str]) -> Options:
         kw = {}
         for p in pairs or []:
             k, _, v = p.partition("=")

@@ -78,7 +78,7 @@ def parse_sql(path: Path, file_id: str) -> dict:
         copy = _table_copy(table)
         meta["tables"][table] = {"columns": cols, "row_count": len(rows), "copy": copy, "system": _table_system(table)}
         for n, row in enumerate(rows, 1):
-            rec = dict(zip(cols, row))
+            rec = dict(zip(cols, row, strict=True))
             location = {"table": table, "row": n}
             if "record_json" in rec:
                 try:

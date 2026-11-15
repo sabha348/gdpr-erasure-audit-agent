@@ -18,10 +18,10 @@ from __future__ import annotations
 import json
 import os
 import time
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 
-ENV_FILE = Path(__file__).resolve().parents[2] / ".env"
+ENV_FILE = Path(__file__).resolve().parents[3] / ".env"
 DEFAULT_MODELS = {"gemini": "gemini-3.8-flash", "anthropic": "claude-opus-5-5"}
 MAX_TOKENS = 16000
 RETRIES, RETRY_BASE_S = 4, 5  # transient API errors: retry after 5 s, 15 s, 45 s, 135 s
@@ -85,7 +85,7 @@ def _gemini(cfg, system, user_text, attachments, schema, record):
         from google import genai
         from google.genai import errors, types
     except ImportError as e:
-        raise LLMUnavailable("google-genai not installed (pip install -r code/requirements.txt)") from e
+        raise LLMUnavailable("google-genai not installed (pip install 'erasure-audit[llm]')") from e
     client = genai.Client(api_key=cfg["key"])
     global _GEMINI_MODELS
     try:
@@ -140,7 +140,7 @@ def _anthropic(cfg, system, user_text, attachments, schema, record):
     try:
         import anthropic
     except ImportError as e:
-        raise LLMUnavailable("anthropic SDK not installed (pip install -r code/requirements.txt)") from e
+        raise LLMUnavailable("anthropic SDK not installed (pip install 'erasure-audit[llm]')") from e
     import base64
     client = anthropic.Anthropic(api_key=cfg["key"], max_retries=4)
     content = []
@@ -185,7 +185,7 @@ def call_structured(*, purpose: str, file_id: str, sha256: str, prompt_id: str, 
     On failure raises LLMUnavailable / LLMError with `.record` set when the request reached an API."""
     cfg = settings()
     record = {
-        "at": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
+        "at": datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%SZ"),
         "purpose": purpose, "file_id": file_id, "sha256": sha256, "prompt_id": prompt_id,
         "provider": cfg["provider"], "requested_model": cfg["model"], "model": cfg["model"],
         "input_tokens": 0, "output_tokens": 0, "thinking_tokens": 0,

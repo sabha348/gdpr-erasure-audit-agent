@@ -14,15 +14,12 @@ import collections
 import csv
 import json
 import re
-import sys
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 from pathlib import Path
 
-CODE_DIR = Path(__file__).resolve().parent.parent
-sys.path.insert(0, str(CODE_DIR))
-from extraction import load_evidence  # noqa: E402
-from extraction.common import scan_identifiers  # noqa: E402
+from ..extraction import load_evidence
+from ..extraction.common import scan_identifiers
 
 LINK_RE = re.compile(r"linked (\S+) \(([^)]*)\) to (\S+) and (user_\d+)|confirmed (\S+) \(([^)]*)\) belongs only to (\S+) and (user_\d+)")
 

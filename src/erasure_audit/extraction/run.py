@@ -1,4 +1,4 @@
-"""Extract every evidence file listed in dataset/evidence_files.csv into code/cache/evidence/.
+"""Extract every evidence file listed in dataset/evidence_files.csv into the extraction cache (.cache/evidence/).
 
 Cache entries are named `<file_id>__<sha256[:12]>.json`. An entry is reused when the file hash, the schema
 version and the parser (or prompt) version all still match. Entries that are waiting for an LLM (needs_llm)
@@ -6,9 +6,9 @@ or failed (error) are retried whenever the LLM is allowed. Changing an evidence 
 only that file, and stale entries for the same file_id are removed.
 
 Usage (from the repository root):
-    python code/extract_evidence.py                 # extract everything that is not cached yet
-    python code/extract_evidence.py --no-llm        # deterministic parsers only; images become needs_llm
-    python code/extract_evidence.py --only evidence_04,evidence_09 --force
+    erasure-audit extract                 # extract everything that is not cached yet
+    erasure-audit extract --no-llm        # deterministic parsers only; images become needs_llm
+    erasure-audit extract --only evidence_04,evidence_09 --force
 """
 from __future__ import annotations
 
@@ -17,17 +17,16 @@ import csv
 import hashlib
 import json
 import sys
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 
 from . import image_parser, log_parser, pdf_parser, prompts, records_parser, sql_parser
 from .common import SCHEMA_VERSION
 
-CODE_DIR = Path(__file__).resolve().parent.parent
-REPO_ROOT = CODE_DIR.parent
+REPO_ROOT = Path(__file__).resolve().parents[3]
 DEFAULT_DATASET = REPO_ROOT / "dataset"
-CACHE_DIR = CODE_DIR / "cache" / "evidence"
-USAGE_LOG = CODE_DIR / "cache" / "llm_calls.jsonl"
+CACHE_DIR = REPO_ROOT / ".cache" / "evidence"
+USAGE_LOG = REPO_ROOT / ".cache" / "llm_calls.jsonl"
 
 FORMATS = {".sql": "sql", ".log": "log", ".json": "json", ".txt": "text", ".pdf": "pdf",
            ".png": "image", ".jpg": "image", ".jpeg": "image", ".gif": "image", ".webp": "image"}
@@ -115,7 +114,7 @@ def extract_one(row: dict, dataset_dir: Path, *, allow_llm: bool, force: bool,
         "captured_at": row["captured_at"],
         "sha256": sha,
         "size_bytes": path.stat().st_size,
-        "extracted_at": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
+        "extracted_at": datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%SZ"),
         **body,
     }
     cache_dir.mkdir(parents=True, exist_ok=True)

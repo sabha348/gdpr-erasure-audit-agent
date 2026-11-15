@@ -11,12 +11,12 @@ dataset/sample_output.csv and reports:
   * exact sequence accuracy: status and the full ordered step list identical;
   * a per-case diff for every case that is not an exact match.
 
-Pipeline contract: `python code/main.py --requests <csv> --output <csv>` writes predictions for the
+Pipeline contract: `erasure-audit run --requests <csv> --output <csv>` writes predictions for the
 given requests. Use --predictions to score an existing file without running the pipeline.
 
 Usage (from the repository root):
-    python code/evaluation/main.py
-    python code/evaluation/main.py --predictions path/to/sample_predictions.csv
+    erasure-audit score
+    erasure-audit score --predictions path/to/sample_predictions.csv
 """
 from __future__ import annotations
 
@@ -27,12 +27,11 @@ import subprocess
 import sys
 from pathlib import Path
 
-sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
-from contract import DATASET_DIR, REPO_ROOT, case_sort_key, read_csv  # noqa: E402
-from validate_output import print_report, validate_file  # noqa: E402
+from ..contract import DATASET_DIR, REPO_ROOT, case_sort_key, read_csv
+from .validate import print_report, validate_file
 
 FIELDS = ("phase", "system_id", "resource_id", "operation", "state", "evidence_id")
-RESULTS_DIR = Path(__file__).resolve().parent / "results"
+RESULTS_DIR = REPO_ROOT / "eval" / "results"
 
 
 def step_tuple(s: dict, fields=FIELDS) -> tuple:
@@ -196,7 +195,7 @@ def render(m: dict) -> str:
 
 
 def run_pipeline(requests: Path, output: Path) -> bool:
-    cmd = [sys.executable, str(REPO_ROOT / "code" / "main.py"), "--requests", str(requests), "--output", str(output)]
+    cmd = [sys.executable, "-m", "erasure_audit", "run", "--requests", str(requests), "--output", str(output)]
     print("Running pipeline:", " ".join(cmd))
     if output.exists():
         output.unlink()
@@ -205,7 +204,7 @@ def run_pipeline(requests: Path, output: Path) -> bool:
         print(f"Pipeline exited with code {proc.returncode}")
         return False
     if not output.exists():
-        print(f"Pipeline finished but wrote no predictions to {output} (is code/main.py implemented?)")
+        print(f"Pipeline finished but wrote no predictions to {output} ")
         return False
     return True
 

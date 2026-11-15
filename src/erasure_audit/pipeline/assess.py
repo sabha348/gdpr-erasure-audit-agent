@@ -7,17 +7,23 @@ from __future__ import annotations
 
 import collections
 import re
-import sys
 from datetime import timedelta
 from pathlib import Path
 
-sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
-from contract import natural_key, step_sort_key  # noqa: E402
-
+from ..contract import natural_key, step_sort_key
 from .classify import classify
 from .config import Options
 from .data import Dataset, ts
-from .evidence import IGNORED_PREFIXES, PREFIX_CATEGORY, PREFIX_SYSTEM, Assertion, interpret, prefix_of, snapshot_units, system_of
+from .evidence import (
+    IGNORED_PREFIXES,
+    PREFIX_CATEGORY,
+    PREFIX_SYSTEM,
+    Assertion,
+    interpret,
+    prefix_of,
+    snapshot_units,
+    system_of,
+)
 
 KIND_PRIORITY = ["EXPOSED", "ACTIVE", "RESTORABLE", "PRESENT", "CLEAN", "DISABLED", "BLOCKED", "ABSENT"]
 VIOLATING = {"EXPOSED", "PRESENT", "ACTIVE", "RESTORABLE"}

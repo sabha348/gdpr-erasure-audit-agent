@@ -1,8 +1,8 @@
 """Validate a predictions CSV against every format rule in README.md / problem_statement.md.
 
 Usage (from the repository root):
-    python code/evaluation/validate_output.py                       # output.csv vs deletion_requests.csv
-    python code/evaluation/validate_output.py PRED.csv --requests dataset/sample_deletion_requests.csv
+    erasure-audit validate                       # output.csv vs deletion_requests.csv
+    erasure-audit validate PRED.csv --requests dataset/sample_deletion_requests.csv
 
 Exit code 0 when there are no errors (warnings allowed), 1 otherwise.
 """
@@ -16,10 +16,20 @@ import sys
 from dataclasses import dataclass
 from pathlib import Path
 
-sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
-from contract import (  # noqa: E402
-    DATASET_DIR, OPERATIONS, OUTPUT_HEADER, PHASE_RANK, PHASES, REMEDIATION_TO_VERIFICATION, REPO_ROOT,
-    STATUSES, STEP_KEYS, case_sort_key, natural_key, read_csv, step_sort_key,
+from ..contract import (
+    DATASET_DIR,
+    OPERATIONS,
+    OUTPUT_HEADER,
+    PHASE_RANK,
+    PHASES,
+    REMEDIATION_TO_VERIFICATION,
+    REPO_ROOT,
+    STATUSES,
+    STEP_KEYS,
+    case_sort_key,
+    natural_key,
+    read_csv,
+    step_sort_key,
 )
 
 

@@ -31,7 +31,8 @@ That interpretation belongs to the pipeline.
 from __future__ import annotations
 
 import re
-from typing import Any, Iterable
+from collections.abc import Iterable
+from typing import Any
 
 SCHEMA_VERSION = 1
 
@@ -49,7 +50,7 @@ def _strings(value: Any) -> Iterable[str]:
     if isinstance(value, str):
         yield value
     elif isinstance(value, dict):
-        for k, v in value.items():
+        for v in value.values():
             yield from _strings(v)
     elif isinstance(value, (list, tuple)):
         for v in value:

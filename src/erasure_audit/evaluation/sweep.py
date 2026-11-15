@@ -6,28 +6,22 @@ are not both credited. The best value is picked by (exact sequence accuracy, ste
 case-status accuracy); on a tie the current default stays. A final run scores the combined picks.
 
 Usage (from the repository root):
-    python code/evaluation/sweep.py            # writes code/evaluation/results/sweep.md and sweep.json
+    erasure-audit sweep            # writes eval/results/sweep.md and sweep.json
 """
 from __future__ import annotations
 
-import importlib.util
 import json
 import sys
 from dataclasses import asdict, fields
 from pathlib import Path
 
+from ..contract import REPO_ROOT
+from ..pipeline import CHOICES, Options, build, read_requests
+from . import score as eval_main
+
 HERE = Path(__file__).resolve().parent
-CODE = HERE.parent
-sys.path.insert(0, str(CODE))
-from pipeline import CHOICES, Options, build, read_requests  # noqa: E402
-
-_spec = importlib.util.spec_from_file_location("eval_main", HERE / "main.py")
-eval_main = importlib.util.module_from_spec(_spec)
-sys.path.insert(0, str(HERE))
-_spec.loader.exec_module(eval_main)
-
-DATASET = CODE.parent / "dataset"
-RESULTS = HERE / "results"
+DATASET = REPO_ROOT / "dataset"
+RESULTS = REPO_ROOT / "eval" / "results"
 
 
 def score(options: Options) -> dict:

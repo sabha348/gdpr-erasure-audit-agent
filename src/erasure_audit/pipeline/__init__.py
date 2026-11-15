@@ -1,14 +1,11 @@
-"""Deletion-audit pipeline. See code/main.py for the command line and docs/DECISIONS.md for the rules."""
+"""Deletion-audit pipeline. See erasure_audit/cli.py for the command line and docs/DECISIONS.md for the rules."""
 from __future__ import annotations
 
 import csv
 import json
-import sys
 from pathlib import Path
 
-sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
-from contract import OUTPUT_HEADER, serialize_steps  # noqa: E402
-
+from ..contract import OUTPUT_HEADER, serialize_steps
 from .assess import Pipeline
 from .config import CHOICES, Options
 
