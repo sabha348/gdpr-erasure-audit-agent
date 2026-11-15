@@ -5,6 +5,7 @@
     erasure-audit validate [PREDICTIONS] [--requests CSV]
     erasure-audit eval [--set all|public|custom] [--cv] [--out DIR] [--option NAME=VALUE ...] [--check]
     erasure-audit score [--predictions CSV]          # legacy report: 32 public samples vs sample_output.csv
+    erasure-audit serve [--host 0.0.0.0] [--port 8000]   # HTTP API (needs the api extra)
     erasure-audit sweep                              # one-factor-at-a-time option sweep on the samples
 
 `python -m erasure_audit ...` is equivalent. Evidence is read through the extraction cache; anything not cached
@@ -105,6 +106,15 @@ def main(argv=None) -> int:
         return cmd_run(rest)
     if command == "eval":
         return cmd_eval(rest)
+    if command == "serve":
+        ap = argparse.ArgumentParser(prog="erasure-audit serve")
+        ap.add_argument("--host", default="127.0.0.1")
+        ap.add_argument("--port", type=int, default=8000)
+        args = ap.parse_args(rest)
+        import uvicorn
+        uvicorn.run("erasure_audit.api.app:create_app", factory=True, host=args.host, port=args.port,
+                    log_config=None, access_log=False)  # RequestContextMiddleware logs requests
+        return 0
     if command == "extract":
         from .extraction.run import main as extract_main
         return extract_main(rest)
