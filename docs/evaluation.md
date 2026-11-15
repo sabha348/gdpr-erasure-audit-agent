@@ -60,3 +60,24 @@ What LOO cannot measure is the bias from rules written by reading the samples, s
 | screenshot transcription | vision model, run once per file and cached by file hash | no (offline extraction) |
 
 With the default `rules` backend, the token and cost columns are zero; that is accurate, not missing data.
+
+## Measured runs (32 public samples)
+
+| run | verdict | step F1 | remediation F1 | exact | model calls | tokens in / out | cost (list price) | latency p50 / p95 |
+|---|---|---|---|---|---|---|---|---|
+| `classifier=rules` | 100% | 94.3% | 100% | 18/32 | 0 | 0 / 0 | $0 | 0.3 ms / 0.5 ms |
+| `classifier=llm`, gemini-3.6-flash, prompt v1 (2026-11-15) | 84.4% | 89.2% | 98.8% | 17/32 | 32 | 8,329 / 1,801 | $0.013 ($0.0004/case) | 6.1 s / 202 s |
+| `classifier=llm`, prompt v2 | not run yet: the free tier's 20-requests/day quota ran out | | | | | | | |
+
+**What prompt v1 got wrong.** All 5 verdict errors were follow-ups such as "Can you verify that my account was
+deleted?", which v1 classified as non-erasure (`account_help` / `other`). The problem statement settles this:
+`NOT_APPLICABLE` is for requests where "no deletion **or deletion verification** is authorized". Prompt v2 adds
+that rule. Because the gap was found by reading sample failures, a v2 score on the samples is partly
+in-sample; the rule itself comes from the spec, not from any sample text.
+
+**Latency.** The p95 is free-tier rate limiting, not model time: one call spent 202 s in 429 backoff. The report
+now shows API retries and rule fallbacks, and the client gives up at once on a per-day quota 429 instead of
+retrying.
+
+**Takeaway so far.** At this point the regex rules beat the zero-shot model on this dataset. The model's value is
+as a second opinion: when it disagrees with the rules, the case is flagged for human review.

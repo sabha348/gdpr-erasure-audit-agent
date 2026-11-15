@@ -50,3 +50,9 @@ def test_unavailable_model_falls_back_to_rules(monkeypatch):
     result = clf.classify_llm(TEXT + " unique suffix so the cache misses")
     assert result["method"] == "rules_fallback"
     assert result["is_deletion"] == clf.classify(TEXT + " unique suffix so the cache misses")["is_deletion"]
+
+
+def test_daily_quota_is_not_retried():
+    msg = "Quota exceeded for metric: ..._free_tier_requests, description: Generate content requests per day limit exceeded"
+    assert llm.is_daily_quota(msg)
+    assert not llm.is_daily_quota("Resource exhausted: requests per minute")
