@@ -15,13 +15,13 @@ import sys
 from dataclasses import asdict, fields
 from pathlib import Path
 
-from ..contract import REPO_ROOT
 from ..pipeline import CHOICES, Options, build, read_requests
+from ..settings import get_settings
 from . import score as eval_main
 
 HERE = Path(__file__).resolve().parent
-DATASET = REPO_ROOT / "dataset"
-RESULTS = REPO_ROOT / "eval" / "results"
+DATASET = get_settings().dataset_dir
+RESULTS = Path("eval") / "results"
 
 
 def score(options: Options) -> dict:

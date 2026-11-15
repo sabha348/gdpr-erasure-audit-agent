@@ -9,12 +9,11 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from .run import CACHE_DIR, DEFAULT_DATASET
 from .run import run as _run
 
 
-def load_evidence(dataset_dir: Path = DEFAULT_DATASET, *, allow_llm: bool = True, verbose: bool = False) -> dict[str, dict]:
+def load_evidence(dataset_dir: Path | None = None, *, allow_llm: bool = True, verbose: bool = False) -> dict[str, dict]:
     return _run(dataset_dir, allow_llm=allow_llm, verbose=verbose)
 
 
-__all__ = ["load_evidence", "CACHE_DIR"]
+__all__ = ["load_evidence"]

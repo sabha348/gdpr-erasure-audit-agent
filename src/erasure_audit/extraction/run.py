@@ -20,13 +20,9 @@ import sys
 from datetime import UTC, datetime
 from pathlib import Path
 
+from ..settings import get_settings
 from . import image_parser, log_parser, pdf_parser, prompts, records_parser, sql_parser
 from .common import SCHEMA_VERSION
-
-REPO_ROOT = Path(__file__).resolve().parents[3]
-DEFAULT_DATASET = REPO_ROOT / "dataset"
-CACHE_DIR = REPO_ROOT / ".cache" / "evidence"
-USAGE_LOG = REPO_ROOT / ".cache" / "llm_calls.jsonl"
 
 FORMATS = {".sql": "sql", ".log": "log", ".json": "json", ".txt": "text", ".pdf": "pdf",
            ".png": "image", ".jpg": "image", ".jpeg": "image", ".gif": "image", ".webp": "image"}
@@ -49,7 +45,7 @@ def sha256_of(path: Path) -> str:
     return h.hexdigest()
 
 
-def cache_path(file_id: str, sha: str, cache_dir: Path = CACHE_DIR) -> Path:
+def cache_path(file_id: str, sha: str, cache_dir: Path) -> Path:
     return cache_dir / f"{file_id}__{sha[:12]}.json"
 
 
@@ -75,7 +71,7 @@ def _cached(path: Path, fmt: str, allow_llm: bool) -> dict | None:
 
 
 def extract_one(row: dict, dataset_dir: Path, *, allow_llm: bool, force: bool,
-                cache_dir: Path = CACHE_DIR, usage_log: Path = USAGE_LOG) -> tuple[dict, bool]:
+                cache_dir: Path, usage_log: Path) -> tuple[dict, bool]:
     """Return (document, from_cache)."""
     file_id = row["file_id"]
     path = resolve_evidence(dataset_dir, row["file_path"])
@@ -125,8 +121,13 @@ def extract_one(row: dict, dataset_dir: Path, *, allow_llm: bool, force: bool,
     return doc, False
 
 
-def run(dataset_dir: Path = DEFAULT_DATASET, *, only: set[str] | None = None, allow_llm: bool = True,
-        force: bool = False, cache_dir: Path = CACHE_DIR, usage_log: Path = USAGE_LOG, verbose: bool = True) -> dict[str, dict]:
+def run(dataset_dir: Path | None = None, *, only: set[str] | None = None, allow_llm: bool = True,
+        force: bool = False, cache_dir: Path | None = None, usage_log: Path | None = None,
+        verbose: bool = True) -> dict[str, dict]:
+    cfg = get_settings()
+    dataset_dir = Path(dataset_dir or cfg.dataset_dir)
+    cache_dir = Path(cache_dir or cfg.evidence_cache_dir)
+    usage_log = Path(usage_log or cfg.usage_log)
     with open(dataset_dir / "evidence_files.csv", encoding="utf-8", newline="") as f:
         manifest = list(csv.DictReader(f))
     docs, index, new_calls = {}, {}, []
@@ -167,14 +168,14 @@ def run(dataset_dir: Path = DEFAULT_DATASET, *, only: set[str] | None = None, al
 
 def main(argv=None) -> int:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.add_argument("--dataset", default=str(DEFAULT_DATASET))
+    ap.add_argument("--dataset", default=None, help="default: $ERASURE_DATASET_DIR or ./dataset")
     ap.add_argument("--only", help="comma-separated file_ids")
     ap.add_argument("--no-llm", action="store_true", help="never call a model; leave such files as needs_llm")
     ap.add_argument("--force", action="store_true", help="ignore the cache and re-extract")
     ap.add_argument("--show", action="store_true", help="print the model transcription of every screenshot extracted")
     args = ap.parse_args(argv)
     only = set(args.only.split(",")) if args.only else None
-    docs = run(Path(args.dataset), only=only, allow_llm=not args.no_llm, force=args.force)
+    docs = run(Path(args.dataset) if args.dataset else None, only=only, allow_llm=not args.no_llm, force=args.force)
     if args.show:
         for fid, doc in docs.items():
             if doc["format"] != "image":

@@ -16,20 +16,20 @@ import argparse
 import sys
 from pathlib import Path
 
-from .contract import REPO_ROOT
 from .pipeline import CHOICES, Options, build, read_requests, run_cases, write_diagnostics, write_output
+from .settings import get_settings
 
 
 def cmd_run(argv) -> int:
     ap = argparse.ArgumentParser(prog="erasure-audit run")
-    ap.add_argument("--dataset", default=str(REPO_ROOT / "dataset"))
+    ap.add_argument("--dataset", default=None, help="default: $ERASURE_DATASET_DIR or ./dataset")
     ap.add_argument("--requests", default=None, help="default: <dataset>/deletion_requests.csv")
     ap.add_argument("--output", default="output.csv")
     ap.add_argument("--option", action="append", default=[], metavar="NAME=VALUE",
                     help="; ".join(f"{k}: {'|'.join(v)}" for k, v in CHOICES.items()))
     args = ap.parse_args(argv)
 
-    dataset = Path(args.dataset)
+    dataset = Path(args.dataset or get_settings().dataset_dir)
     requests = read_requests(Path(args.requests) if args.requests else dataset / "deletion_requests.csv")
     options = Options.parse(args.option)
     results = run_cases(build(dataset, options), requests)

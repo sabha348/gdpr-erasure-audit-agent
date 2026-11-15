@@ -1,10 +1,8 @@
 """Pluggable model client for the few files deterministic parsers cannot read.
 
-Provider: LLM_PROVIDER = gemini (default) | anthropic | none. Taken from the environment, else from .env.
-API keys are read ONLY from the .env file at the repository root (GEMINI_API_KEY, ANTHROPIC_API_KEY),
-never from process environment variables, and are never logged.
-Optional settings (environment or .env): EVIDENCE_LLM_MODEL (override the provider default),
-EVIDENCE_LLM_THINKING (Gemini thinking level, default low), EVIDENCE_LLM_EFFORT (Anthropic effort, default medium).
+Provider and keys come from erasure_audit.settings (environment variables, then an optional .env):
+LLM_PROVIDER = gemini (default) | anthropic | none, GEMINI_API_KEY, ANTHROPIC_API_KEY, EVIDENCE_LLM_MODEL,
+EVIDENCE_LLM_THINKING, EVIDENCE_LLM_EFFORT. Keys are SecretStr and are never logged.
 
 Every request that reaches an API appends one JSON line to the usage log (provider, model, input, output and
 thinking tokens, estimated cost), and the same record is stored in the extraction document's `llm_calls`.
@@ -16,12 +14,12 @@ Determinism: Gemini runs at temperature 0. The Anthropic API rejects `temperatur
 from __future__ import annotations
 
 import json
-import os
 import time
 from datetime import UTC, datetime
 from pathlib import Path
 
-ENV_FILE = Path(__file__).resolve().parents[3] / ".env"
+from ..settings import get_settings
+
 DEFAULT_MODELS = {"gemini": "gemini-3.8-flash", "anthropic": "claude-opus-5-5"}
 MAX_TOKENS = 16000
 RETRIES, RETRY_BASE_S = 4, 5  # transient API errors: retry after 5 s, 15 s, 45 s, 135 s
@@ -44,25 +42,14 @@ class LLMError(RuntimeError):
     """A request was made but did not produce a usable result."""
 
 
-def _dotenv() -> dict:
-    if not ENV_FILE.exists():
-        return {}
-    from dotenv import dotenv_values
-    return {k: v for k, v in dotenv_values(ENV_FILE).items() if v}
-
-
 def settings() -> dict:
-    env = _dotenv()
-    setting = lambda name, default=None: os.environ.get(name) or env.get(name) or default  # noqa: E731
-    provider = setting("LLM_PROVIDER", "gemini").strip().lower()
-    if provider not in ("gemini", "anthropic", "none"):
-        raise LLMUnavailable(f"unknown LLM_PROVIDER={provider!r} (use gemini, anthropic or none)")
+    cfg = get_settings()
     return {
-        "provider": provider,
-        "model": setting("EVIDENCE_LLM_MODEL", DEFAULT_MODELS.get(provider)),
-        "thinking": setting("EVIDENCE_LLM_THINKING", "low"),
-        "effort": setting("EVIDENCE_LLM_EFFORT", "medium"),
-        "key": {"gemini": env.get("GEMINI_API_KEY"), "anthropic": env.get("ANTHROPIC_API_KEY")}.get(provider),
+        "provider": cfg.llm_provider,
+        "model": cfg.llm_model or DEFAULT_MODELS.get(cfg.llm_provider),
+        "thinking": cfg.llm_thinking,
+        "effort": cfg.llm_effort,
+        "key": cfg.api_key(),
     }
 
 
@@ -197,7 +184,7 @@ def call_structured(*, purpose: str, file_id: str, sha256: str, prompt_id: str, 
         if cfg["provider"] == "none":
             raise LLMUnavailable("LLM_PROVIDER=none")
         if not cfg["key"]:
-            raise LLMUnavailable(f"no {cfg['provider'].upper()}_API_KEY in {ENV_FILE.name}")
+            raise LLMUnavailable(f"{cfg['provider'].upper()}_API_KEY is not set")
         call = _gemini if cfg["provider"] == "gemini" else _anthropic
         text = call(cfg, system, user_text, attachments, schema, record)
         if not text:

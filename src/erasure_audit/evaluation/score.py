@@ -27,11 +27,12 @@ import subprocess
 import sys
 from pathlib import Path
 
-from ..contract import DATASET_DIR, REPO_ROOT, case_sort_key, read_csv
+from ..contract import case_sort_key, read_csv
+from ..settings import get_settings
 from .validate import print_report, validate_file
 
 FIELDS = ("phase", "system_id", "resource_id", "operation", "state", "evidence_id")
-RESULTS_DIR = REPO_ROOT / "eval" / "results"
+RESULTS_DIR = Path("eval") / "results"
 
 
 def step_tuple(s: dict, fields=FIELDS) -> tuple:
@@ -199,7 +200,7 @@ def run_pipeline(requests: Path, output: Path) -> bool:
     print("Running pipeline:", " ".join(cmd))
     if output.exists():
         output.unlink()
-    proc = subprocess.run(cmd, cwd=REPO_ROOT)
+    proc = subprocess.run(cmd)
     if proc.returncode != 0:
         print(f"Pipeline exited with code {proc.returncode}")
         return False
@@ -211,8 +212,8 @@ def run_pipeline(requests: Path, output: Path) -> bool:
 
 def main(argv=None) -> int:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.add_argument("--requests", default=str(DATASET_DIR / "sample_deletion_requests.csv"))
-    ap.add_argument("--gold", default=str(DATASET_DIR / "sample_output.csv"))
+    ap.add_argument("--requests", default=str(get_settings().dataset_dir / "sample_deletion_requests.csv"))
+    ap.add_argument("--gold", default=str(get_settings().dataset_dir / "sample_output.csv"))
     ap.add_argument("--predictions", help="score this CSV instead of running the pipeline")
     ap.add_argument("--out-dir", default=str(RESULTS_DIR), help="where predictions, metrics JSON and report go")
     args = ap.parse_args(argv)

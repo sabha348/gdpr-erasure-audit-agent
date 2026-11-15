@@ -17,13 +17,11 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from ..contract import (
-    DATASET_DIR,
     OPERATIONS,
     OUTPUT_HEADER,
     PHASE_RANK,
     PHASES,
     REMEDIATION_TO_VERIFICATION,
-    REPO_ROOT,
     STATUSES,
     STEP_KEYS,
     case_sort_key,
@@ -31,6 +29,7 @@ from ..contract import (
     read_csv,
     step_sort_key,
 )
+from ..settings import get_settings
 
 
 @dataclass
@@ -167,7 +166,8 @@ def validate_steps(case_id: str, status: str, steps, audit_at: str | None, evide
     return issues
 
 
-def validate_file(pred_path: Path, requests_path: Path, dataset_dir: Path = DATASET_DIR) -> list[Issue]:
+def validate_file(pred_path: Path, requests_path: Path, dataset_dir: Path | None = None) -> list[Issue]:
+    dataset_dir = Path(dataset_dir or get_settings().dataset_dir)
     issues: list[Issue] = []
     requests = read_csv(requests_path)
     audit_at = {r["case_id"]: r["audit_at"] for r in requests}
@@ -234,8 +234,8 @@ def print_report(issues: list[Issue], pred_path: Path, max_per_rule: int = 5) ->
 
 def main(argv=None) -> int:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.add_argument("predictions", nargs="?", default=str(REPO_ROOT / "output.csv"))
-    ap.add_argument("--requests", default=str(DATASET_DIR / "deletion_requests.csv"))
+    ap.add_argument("predictions", nargs="?", default="output.csv")
+    ap.add_argument("--requests", default=str(get_settings().dataset_dir / "deletion_requests.csv"))
     ap.add_argument("--max-per-rule", type=int, default=5)
     args = ap.parse_args(argv)
     pred = Path(args.predictions)
