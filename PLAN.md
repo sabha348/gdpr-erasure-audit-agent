@@ -1,6 +1,19 @@
 # PLAN — from challenge entry to production-grade service
 
-Status: **draft, waiting for approval**. No code has been changed yet.
+Status: **draft v2, waiting for approval**. No code has been changed yet.
+
+## Decisions taken with the owner (2026-11-15)
+
+| Topic | Decision |
+|---|---|
+| Hackathon version | Commit `ab47ec2` (2026-10-25) is tagged `hackerrank-orchestrate-submission` once confirmed. The README opens with the ranking line and the tag. All upgrade work happens on `upgrade/eval-temporal`, never on the tag. |
+| Branches / PRs | M1 is a PR from `upgrade/eval-temporal` to `main`. Later milestones use stacked branches (`upgrade/m2-api`, `upgrade/m3-temporal`, `upgrade/m4-ship`), each opened as its own PR for the owner to merge. |
+| Labelled set | The 32 official public samples (`sample_output.csv`, organiser ground truth published to participants) are the labelled set; nothing is invented. They are reported as **in-sample**, because the settings were tuned on them, next to a **leave-one-out cross-validated** score: each case is scored with settings chosen on the other 31. Label-free invariance tests are added as well. `eval/cases/custom/` stays open for owner-written held-out cases, reported as a separate slice. |
+| Per-request model | A Gemini request classifier becomes the setting `classifier=llm`, with the regex rules as the fallback. Cost is shown at paid-tier list price, with a note that the free tier bills $0 and is rate-limited. |
+| After approval | (a) The approved plan is written to an outbox and the audit is marked APPROVED, behind a `RemediationExecutor` interface. The default implementation is a dry run. |
+| Restructure | `code/` moves to `src/erasure_audit/`, and the challenge files (`problem_statement.md`, `AGENTS.md`, `agent_trace_instructions.md`, `log.txt`) move to `docs/challenge/`. The `log.txt` logging rule ends because the challenge is over. |
+| Dataset | `dataset/` stays in the repo: it is fictional, the challenge already published it, and the evaluation and CI need it. The README credits HackerRank as its source. |
+
 
 ## 0. Where the repo is today
 
