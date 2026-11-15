@@ -15,6 +15,9 @@ from __future__ import annotations
 
 import json
 import time
+from collections.abc import Iterator
+from contextlib import contextmanager
+from contextvars import ContextVar
 from datetime import UTC, datetime
 from pathlib import Path
 
@@ -32,6 +35,28 @@ PRICING = {
     "claude-opus-5-5": (4.00, 20.00, 5.00, 0.20),
     "claude-sonnet-5-5": (2.00, 10.00, 2.50, 0.20),
 }
+
+
+_CAPTURE: ContextVar[list[dict] | None] = ContextVar("llm_usage_capture", default=None)
+
+
+@contextmanager
+def capture_usage() -> Iterator[list[dict]]:
+    """Collect the usage record of every model call made inside the block (per evaluation case, per API request).
+    Context-local, so concurrent requests or workflow activities never see each other's calls."""
+    calls: list[dict] = []
+    token = _CAPTURE.set(calls)
+    try:
+        yield calls
+    finally:
+        _CAPTURE.reset(token)
+
+
+def record_usage(record: dict) -> None:
+    """Add a usage record to the active capture (if any). Used for real calls and for cache hits."""
+    calls = _CAPTURE.get()
+    if calls is not None:
+        calls.append(record)
 
 
 class LLMUnavailable(RuntimeError):
@@ -205,3 +230,4 @@ def call_structured(*, purpose: str, file_id: str, sha256: str, prompt_id: str, 
             usage_log.parent.mkdir(parents=True, exist_ok=True)
             with open(usage_log, "a", encoding="utf-8") as f:
                 f.write(json.dumps(record, sort_keys=True) + "\n")
+            record_usage(record)
