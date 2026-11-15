@@ -19,6 +19,8 @@ from ..pipeline import CHOICES, Options, build
 from .cases import LabelledCase
 from .metrics import aggregate, score_case
 
+NOT_TUNED = {"classifier"}  # a backend choice (cost, availability), compared explicitly rather than swept
+
 
 def rank(m: dict) -> tuple:
     """Same objective as the original sweep: exact sequences, then step F1, mean field accuracy, status."""
@@ -49,7 +51,7 @@ def select_options(preds: _Predictions, train_ids: list[str], start: Options = O
     base = start
     for f in fields(Options):
         name, current = f.name, getattr(base, f.name)
-        if len(CHOICES[name]) < 2:
+        if len(CHOICES[name]) < 2 or name in NOT_TUNED:
             continue
         ranked = {v: rank(aggregate([preds(base.with_(**{name: v}))[c] for c in train_ids])) for v in CHOICES[name]}
         best = max(ranked, key=lambda v: ranked[v])

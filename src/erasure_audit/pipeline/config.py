@@ -40,8 +40,8 @@ CHOICES = {
     ),
     # DECISIONS #1: resource_id order inside one (phase, operation, system_id).
     "resource_order": ("string", "numeric"),
-    # DECISIONS #15: request classification backend (LLM backend to be plugged in later).
-    "classifier": ("rules",),
+    # DECISIONS #15: request classification backend (llm = Gemini/Anthropic per LLM_PROVIDER, rules as fallback).
+    "classifier": ("rules", "llm"),
     # Screenshots without a model transcription: rule-based fallback (low confidence) or ignore.
     "image_fallback": ("rules", "off"),
 }

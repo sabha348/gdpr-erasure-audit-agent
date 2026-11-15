@@ -11,7 +11,7 @@ from datetime import timedelta
 from pathlib import Path
 
 from ..contract import natural_key, step_sort_key
-from .classify import classify
+from .classify import classify, classify_with
 from .config import Options
 from .data import Dataset, ts
 from .evidence import (
@@ -99,6 +99,8 @@ class Pipeline:
         exact-key candidates."""
         evidence_accounts, need, anchors = set(), {}, {}
         for q in requests:
+            # Rules only: this pre-filter runs over every known request at start-up (550 texts), and which
+            # requests compete for accounts must not depend on a remote model being reachable.
             if not classify(q["request_text"])["is_deletion"]:
                 continue
             uid, tokens = self.subject(q["email"])
@@ -338,10 +340,12 @@ class Pipeline:
     # ------------------------------------------------------------------ one case
     def assess(self, q: dict) -> tuple[str, list[dict], dict]:
         diag = {"case_id": q["case_id"], "low_confidence": []}
-        cls = classify(q["request_text"])
+        cls = classify_with(self.opt.classifier, q["request_text"])
         diag["classification"] = cls
         if cls["confidence"] == "low":
-            diag["low_confidence"].append("classification:rules")
+            diag["low_confidence"].append(f"classification:{cls['method']}")
+        if cls.get("disagreement"):
+            diag["low_confidence"].append("classification:llm_rules_disagree")
         uid, tokens = self.subject(q["email"])
         diag["subject"] = uid
         if not cls["is_deletion"]:

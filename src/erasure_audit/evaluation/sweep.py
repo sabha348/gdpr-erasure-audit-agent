@@ -57,7 +57,7 @@ def main() -> int:
     cache = {}
     for f in fields(Options):
         name, current = f.name, getattr(base, f.name)
-        if len(CHOICES[name]) < 2:
+        if len(CHOICES[name]) < 2 or name == "classifier":  # backend choice, not a tuned rule
             continue
         results = {}
         for value in CHOICES[name]:

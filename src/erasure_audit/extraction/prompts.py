@@ -114,3 +114,45 @@ PDF_SCHEMA = {
     "required": ["pages"],
     "additionalProperties": False,
 }
+
+
+# --------------------------------------------------------------------------------------------
+# Request classification (pipeline/classify.py, option classifier=llm)
+# Zero-shot on purpose: no labelled sample text appears in the prompt, so evaluation stays uncontaminated.
+# --------------------------------------------------------------------------------------------
+
+CLASSIFIER_PROMPT_VERSION = "2026-11-15.1"
+
+CLASSIFIER_SYSTEM = """\
+You triage privacy requests sent to an e-commerce company. Decide whether the request authorises erasure
+of the person's account or personal data under GDPR Article 17 (right to erasure).
+
+It IS an erasure request when the person asks to delete, erase, remove or close their account or their
+personal data, in any language, including indirect wording ("I no longer want you to hold my data").
+It is NOT an erasure request when the person asks only for something narrower or different:
+- access to, or a copy / export / download of, their data;
+- correction or update of data (e.g. a misspelled name or an outdated email);
+- unsubscribing or opting out of marketing, newsletters or promotional lists only;
+- help with login, passwords, invoices or orders;
+- anything that explicitly says to keep the account or not to delete it.
+If the person mixes an erasure request with other asks, it is still an erasure request, unless they
+explicitly limit the deletion to a narrower scope (e.g. "remove me from marketing lists only").
+
+Judge only from the text. Quote the decisive phrase verbatim in its original language.
+"""
+
+CLASSIFIER_USER = "Request text:\n<<<\n{text}\n>>>"
+
+CLASSIFIER_SCHEMA = {
+    "type": "object",
+    "properties": {
+        "is_deletion": {"type": "boolean"},
+        "request_type": {"type": "string", "enum": ["erasure", "access", "export", "correction",
+                                                     "marketing_opt_out", "account_help", "other"]},
+        "language": {"type": "string", "description": "ISO 639-1 code of the request text"},
+        "decisive_phrase": {"type": "string"},
+        "confidence": {"type": "string", "enum": ["high", "medium", "low"]},
+    },
+    "required": ["is_deletion", "request_type", "language", "decisive_phrase", "confidence"],
+    "additionalProperties": False,
+}

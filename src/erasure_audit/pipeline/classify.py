@@ -1,6 +1,12 @@
 """Does the request text authorise account deletion? (DECISIONS #15)
 
-Rule-based backend, used until an LLM classifier is plugged in; every result is marked confidence="low".
+Two backends, selected with the `classifier` option:
+  * rules (default): multilingual regexes; every result is marked confidence="low".
+  * llm: a zero-shot, schema-constrained model call (prompts.CLASSIFIER_*), cached by text hash. If the model is
+    unavailable or fails, the rules answer is used and marked method="rules_fallback". When both backends ran and
+    disagree, the result carries disagreement=True so the case is flagged for human review.
+
+Rules backend:
 A request is a deletion request when it asks to delete/erase/close the account or its personal data, in any of the
 languages seen (en, es, pt, fr, ja, ko). It is NOT a deletion request when it only asks for something narrower:
 access, a copy/export, a correction, a marketing opt-out, login help. Explicit "keep the account" wording wins.
@@ -8,7 +14,12 @@ The pipeline cross-checks the result against CLASSIFY_REQUEST activity rows for 
 """
 from __future__ import annotations
 
+import hashlib
+import json
 import re
+
+from ..extraction import llm, prompts
+from ..settings import get_settings
 
 DELETION = [
     r"\b(delete|deleting|deleted|deletion|erase|erased|erasure)\b",
@@ -53,3 +64,45 @@ def classify(text: str) -> dict:
         is_deletion = False
     return {"is_deletion": is_deletion, "method": "rules", "confidence": "low",
             "signals": {"deletion": deletion, "narrow": narrow, "keep_account": keep}}
+
+
+def _cache_path(text: str):
+    cfg = llm.settings()
+    key = hashlib.sha256(f"{prompts.CLASSIFIER_PROMPT_VERSION}|{cfg['provider']}|{cfg['model']}|{text}".encode()).hexdigest()
+    return get_settings().cache_dir / "classifier" / f"{key[:24]}.json", key
+
+
+def classify_llm(text: str) -> dict:
+    rules = classify(text)
+    path, key = _cache_path(text.strip())
+    cached = None
+    if path.exists():
+        try:
+            cached = json.loads(path.read_text(encoding="utf-8"))
+        except json.JSONDecodeError:
+            cached = None
+    if cached:
+        answer, call = cached["answer"], cached["call"]
+        llm.record_usage({**call, "cached": True})
+    else:
+        try:
+            answer, call = llm.call_structured(
+                purpose="request_classification", file_id="request", sha256=key,
+                prompt_id=f"classifier@{prompts.CLASSIFIER_PROMPT_VERSION}", system=prompts.CLASSIFIER_SYSTEM,
+                user_text=prompts.CLASSIFIER_USER.format(text=text.strip()), attachments=[],
+                schema=prompts.CLASSIFIER_SCHEMA, usage_log=get_settings().usage_log)
+        except (llm.LLMUnavailable, llm.LLMError) as e:
+            return {**rules, "method": "rules_fallback", "llm_error": str(e)}
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(json.dumps({"answer": answer, "call": call}, ensure_ascii=False), encoding="utf-8")
+    return {
+        "is_deletion": bool(answer["is_deletion"]), "method": "llm", "confidence": answer["confidence"],
+        "request_type": answer["request_type"], "language": answer["language"],
+        "decisive_phrase": answer["decisive_phrase"], "model": call.get("model"),
+        "disagreement": bool(answer["is_deletion"]) != rules["is_deletion"],
+        "rules": {"is_deletion": rules["is_deletion"], "signals": rules["signals"]},
+    }
+
+
+def classify_with(backend: str, text: str) -> dict:
+    return classify_llm(text) if backend == "llm" else classify(text)
