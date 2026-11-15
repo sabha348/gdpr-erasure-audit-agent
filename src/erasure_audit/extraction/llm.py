@@ -61,6 +61,19 @@ def record_usage(record: dict) -> None:
         calls.append(record)
 
 
+def summarise_usage(calls: list[dict]) -> dict:
+    """Fresh (billed) calls vs cache hits, tokens and list-price cost for a captured block."""
+    fresh = [c for c in calls if not c.get("cached")]
+    return {
+        "llm_calls": len(fresh),
+        "cached_llm_calls": len(calls) - len(fresh),
+        "input_tokens": sum(c.get("input_tokens", 0) for c in fresh),
+        "output_tokens": sum(c.get("output_tokens", 0) + c.get("thinking_tokens", 0) for c in fresh),
+        "cost_usd": sum(c.get("estimated_cost_usd") or 0.0 for c in fresh),
+        "api_retries": sum(max(0, (c.get("attempts") or 1) - 1) for c in fresh),
+    }
+
+
 class LLMUnavailable(RuntimeError):
     """No provider configured or no usable key; the caller records the file as needs_llm and continues."""
 

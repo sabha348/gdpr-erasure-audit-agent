@@ -7,7 +7,7 @@ import time
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
 
-from ..extraction.llm import capture_usage
+from ..extraction.llm import capture_usage, summarise_usage
 from ..pipeline import Options, build
 from .cases import LabelledCase
 from .metrics import aggregate, score_case
@@ -32,15 +32,7 @@ class CaseResult:
 
 
 def _usage(calls: list[dict]) -> dict:
-    fresh = [c for c in calls if not c.get("cached")]
-    return {
-        "llm_calls": len(fresh),
-        "cached_llm_calls": len(calls) - len(fresh),
-        "input_tokens": sum(c.get("input_tokens", 0) for c in fresh),
-        "output_tokens": sum(c.get("output_tokens", 0) + c.get("thinking_tokens", 0) for c in fresh),
-        "cost_usd": sum(c.get("estimated_cost_usd") or 0.0 for c in fresh),
-        "api_retries": sum(max(0, (c.get("attempts") or 1) - 1) for c in fresh),
-    }
+    return summarise_usage(calls)
 
 
 def run_cases(cases: list[LabelledCase], dataset_dir: Path, options: Options = Options()) -> tuple[list[CaseResult], dict]:
