@@ -10,7 +10,8 @@ local use and `/app` in the container image.
 | ERASURE_CACHE_DIR        | .cache     | extraction cache and LLM usage log                 |
 | ERASURE_ENV_FILE         | .env       | optional dotenv file                               |
 | LLM_PROVIDER             | gemini     | gemini, anthropic or none                          |
-| GEMINI_API_KEY           | (unset)    | key for the Gemini API                             |
+| GEMINI_API_KEY           | (unset)    | key for the Gemini API (aliases: GOOGLE_GENERATIVE_AI_API_KEY, GOOGLE_API_KEY) |
+| GEMINI_MODEL             | (unset)    | Gemini model, used when EVIDENCE_LLM_MODEL is unset |
 | ANTHROPIC_API_KEY        | (unset)    | key for the Anthropic API                          |
 | EVIDENCE_LLM_MODEL       | (provider default) | model override for evidence/classifier calls |
 | EVIDENCE_LLM_THINKING    | low        | Gemini thinking level                              |
@@ -35,9 +36,11 @@ class Settings(BaseSettings):
     cache_dir: Path = Field(Path(".cache"), validation_alias=AliasChoices("ERASURE_CACHE_DIR"))
 
     llm_provider: Literal["gemini", "anthropic", "none"] = Field("gemini", validation_alias=AliasChoices("LLM_PROVIDER"))
-    gemini_api_key: SecretStr | None = Field(None, validation_alias=AliasChoices("GEMINI_API_KEY"))
+    gemini_api_key: SecretStr | None = Field(
+        None, validation_alias=AliasChoices("GEMINI_API_KEY", "GOOGLE_GENERATIVE_AI_API_KEY", "GOOGLE_API_KEY"))
     anthropic_api_key: SecretStr | None = Field(None, validation_alias=AliasChoices("ANTHROPIC_API_KEY"))
     llm_model: str | None = Field(None, validation_alias=AliasChoices("EVIDENCE_LLM_MODEL"))
+    gemini_model: str | None = Field(None, validation_alias=AliasChoices("GEMINI_MODEL"))
     llm_thinking: str = Field("low", validation_alias=AliasChoices("EVIDENCE_LLM_THINKING"))
     llm_effort: str = Field("medium", validation_alias=AliasChoices("EVIDENCE_LLM_EFFORT"))
 
@@ -48,6 +51,10 @@ class Settings(BaseSettings):
     @property
     def usage_log(self) -> Path:
         return self.cache_dir / "llm_calls.jsonl"
+
+    def model_for(self, provider: str | None = None) -> str | None:
+        provider = provider or self.llm_provider
+        return self.llm_model or (self.gemini_model if provider == "gemini" else None)
 
     def api_key(self, provider: str | None = None) -> str | None:
         secret = {"gemini": self.gemini_api_key, "anthropic": self.anthropic_api_key}.get(provider or self.llm_provider)

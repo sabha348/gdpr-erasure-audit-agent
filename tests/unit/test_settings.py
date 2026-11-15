@@ -28,3 +28,14 @@ def test_unknown_provider_is_rejected(monkeypatch):
     monkeypatch.setenv("LLM_PROVIDER", "mystery")
     with pytest.raises(pydantic.ValidationError):
         Settings(_env_file=None)
+
+
+def test_google_key_and_model_aliases(monkeypatch):
+    monkeypatch.setenv("GOOGLE_GENERATIVE_AI_API_KEY", "alias-key")
+    monkeypatch.setenv("GEMINI_MODEL", "gemini-x")
+    monkeypatch.setenv("LLM_PROVIDER", "gemini")
+    s = Settings(_env_file=None)
+    assert s.api_key() == "alias-key"
+    assert s.model_for() == "gemini-x"
+    monkeypatch.setenv("EVIDENCE_LLM_MODEL", "override")
+    assert Settings(_env_file=None).model_for() == "override"
