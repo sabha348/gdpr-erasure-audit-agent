@@ -1,0 +1,960 @@
+{
+  "components": {
+    "schemas": {
+      "Approval": {
+        "additionalProperties": false,
+        "properties": {
+          "approver": {
+            "description": "Who decided (user id or email)",
+            "maxLength": 200,
+            "minLength": 1,
+            "title": "Approver",
+            "type": "string"
+          },
+          "comment": {
+            "default": "",
+            "maxLength": 2000,
+            "title": "Comment",
+            "type": "string"
+          },
+          "decision": {
+            "$ref": "#/components/schemas/ApprovalDecision"
+          }
+        },
+        "required": [
+          "decision",
+          "approver"
+        ],
+        "title": "Approval",
+        "type": "object"
+      },
+      "ApprovalDecision": {
+        "enum": [
+          "approve",
+          "reject"
+        ],
+        "title": "ApprovalDecision",
+        "type": "string"
+      },
+      "AuditRecord": {
+        "properties": {
+          "approval": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Approval"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "approved_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Approved At"
+          },
+          "audit_id": {
+            "title": "Audit Id",
+            "type": "string"
+          },
+          "created_at": {
+            "title": "Created At",
+            "type": "string"
+          },
+          "error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error"
+          },
+          "remediation": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/RemediationTicket"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "request": {
+            "$ref": "#/components/schemas/DeletionRequest"
+          },
+          "result": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/AuditResult"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "state": {
+            "$ref": "#/components/schemas/AuditState"
+          },
+          "updated_at": {
+            "title": "Updated At",
+            "type": "string"
+          }
+        },
+        "required": [
+          "audit_id",
+          "state",
+          "request",
+          "created_at",
+          "updated_at"
+        ],
+        "title": "AuditRecord",
+        "type": "object"
+      },
+      "AuditResult": {
+        "properties": {
+          "case_id": {
+            "title": "Case Id",
+            "type": "string"
+          },
+          "deletion_status": {
+            "$ref": "#/components/schemas/DeletionStatus"
+          },
+          "diagnostics": {
+            "$ref": "#/components/schemas/Diagnostics"
+          },
+          "duration_ms": {
+            "title": "Duration Ms",
+            "type": "number"
+          },
+          "steps": {
+            "items": {
+              "$ref": "#/components/schemas/Step"
+            },
+            "title": "Steps",
+            "type": "array"
+          },
+          "usage": {
+            "$ref": "#/components/schemas/Usage"
+          }
+        },
+        "required": [
+          "case_id",
+          "deletion_status",
+          "steps",
+          "diagnostics",
+          "duration_ms"
+        ],
+        "title": "AuditResult",
+        "type": "object"
+      },
+      "AuditState": {
+        "description": "RUNNING -> COMPLETED (nothing to remediate) | AWAITING_APPROVAL -> REMEDIATION_ISSUED | REJECTED | EXPIRED;\nany step can end in FAILED.",
+        "enum": [
+          "RUNNING",
+          "COMPLETED",
+          "AWAITING_APPROVAL",
+          "REMEDIATION_ISSUED",
+          "REJECTED",
+          "EXPIRED",
+          "FAILED"
+        ],
+        "title": "AuditState",
+        "type": "string"
+      },
+      "BatchRequest": {
+        "properties": {
+          "requests": {
+            "items": {
+              "$ref": "#/components/schemas/DeletionRequest"
+            },
+            "minItems": 1,
+            "title": "Requests",
+            "type": "array"
+          }
+        },
+        "required": [
+          "requests"
+        ],
+        "title": "BatchRequest",
+        "type": "object"
+      },
+      "BatchResponse": {
+        "properties": {
+          "audits": {
+            "items": {
+              "$ref": "#/components/schemas/AuditRecord"
+            },
+            "title": "Audits",
+            "type": "array"
+          }
+        },
+        "required": [
+          "audits"
+        ],
+        "title": "BatchResponse",
+        "type": "object"
+      },
+      "Classification": {
+        "additionalProperties": true,
+        "properties": {
+          "confidence": {
+            "title": "Confidence",
+            "type": "string"
+          },
+          "is_deletion": {
+            "title": "Is Deletion",
+            "type": "boolean"
+          },
+          "method": {
+            "description": "rules | llm | rules_fallback",
+            "title": "Method",
+            "type": "string"
+          }
+        },
+        "required": [
+          "is_deletion",
+          "method",
+          "confidence"
+        ],
+        "title": "Classification",
+        "type": "object"
+      },
+      "DeletionRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "audit_at": {
+            "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}Z$",
+            "title": "Audit At",
+            "type": "string"
+          },
+          "case_id": {
+            "pattern": "^[A-Za-z0-9_.-]+$",
+            "title": "Case Id",
+            "type": "string"
+          },
+          "email": {
+            "minLength": 3,
+            "title": "Email",
+            "type": "string"
+          },
+          "reported_at": {
+            "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}Z$",
+            "title": "Reported At",
+            "type": "string"
+          },
+          "reported_status": {
+            "$ref": "#/components/schemas/ReportedStatus"
+          },
+          "request_text": {
+            "minLength": 1,
+            "title": "Request Text",
+            "type": "string"
+          },
+          "requested_at": {
+            "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}Z$",
+            "title": "Requested At",
+            "type": "string"
+          }
+        },
+        "required": [
+          "case_id",
+          "email",
+          "requested_at",
+          "reported_status",
+          "reported_at",
+          "audit_at",
+          "request_text"
+        ],
+        "title": "DeletionRequest",
+        "type": "object"
+      },
+      "DeletionStatus": {
+        "enum": [
+          "COMPLETE",
+          "INCOMPLETE",
+          "NOT_APPLICABLE"
+        ],
+        "title": "DeletionStatus",
+        "type": "string"
+      },
+      "Diagnostics": {
+        "additionalProperties": true,
+        "description": "Why the agent decided what it decided; every uncertain decision is listed in low_confidence.",
+        "properties": {
+          "account": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Account"
+          },
+          "classification": {
+            "$ref": "#/components/schemas/Classification"
+          },
+          "error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error"
+          },
+          "low_confidence": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Low Confidence",
+            "type": "array"
+          },
+          "resources": {
+            "additionalProperties": {
+              "$ref": "#/components/schemas/ResourceAssessment"
+            },
+            "title": "Resources",
+            "type": "object"
+          },
+          "subject": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Resolved stable user_id",
+            "title": "Subject"
+          }
+        },
+        "required": [
+          "classification"
+        ],
+        "title": "Diagnostics",
+        "type": "object"
+      },
+      "HTTPValidationError": {
+        "properties": {
+          "detail": {
+            "items": {
+              "$ref": "#/components/schemas/ValidationError"
+            },
+            "title": "Detail",
+            "type": "array"
+          }
+        },
+        "title": "HTTPValidationError",
+        "type": "object"
+      },
+      "Operation": {
+        "enum": [
+          "REPORT_REMAINING_RECORD",
+          "REPORT_EXPOSED_PII",
+          "REPORT_ACTIVE_DATA_FLOW",
+          "REPORT_RESTORE_RISK",
+          "DISABLE_DATA_FLOW",
+          "BLOCK_RESTORE",
+          "DELETE_RECORD",
+          "REDACT_RECORD",
+          "ANONYMIZE_RECORD",
+          "VERIFY_RECORD_ABSENT",
+          "VERIFY_RECORD_PRESENT",
+          "VERIFY_RECORD_REDACTED",
+          "VERIFY_RECORD_ANONYMIZED",
+          "VERIFY_DATA_FLOW_DISABLED",
+          "VERIFY_RESTORE_BLOCKED"
+        ],
+        "title": "Operation",
+        "type": "string"
+      },
+      "Phase": {
+        "enum": [
+          "FINDING",
+          "REMEDIATION",
+          "VERIFICATION"
+        ],
+        "title": "Phase",
+        "type": "string"
+      },
+      "PolicyRule": {
+        "properties": {
+          "condition": {
+            "title": "Condition",
+            "type": "string"
+          },
+          "data_category": {
+            "title": "Data Category",
+            "type": "string"
+          },
+          "required_action": {
+            "title": "Required Action",
+            "type": "string"
+          },
+          "rule_id": {
+            "title": "Rule Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "rule_id",
+          "data_category",
+          "condition",
+          "required_action"
+        ],
+        "title": "PolicyRule",
+        "type": "object"
+      },
+      "RemediationTicket": {
+        "properties": {
+          "executor": {
+            "description": "Which RemediationExecutor issued it, e.g. dry_run",
+            "title": "Executor",
+            "type": "string"
+          },
+          "issued_at": {
+            "title": "Issued At",
+            "type": "string"
+          },
+          "steps": {
+            "items": {
+              "$ref": "#/components/schemas/Step"
+            },
+            "title": "Steps",
+            "type": "array"
+          },
+          "ticket_id": {
+            "title": "Ticket Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "ticket_id",
+          "executor",
+          "issued_at",
+          "steps"
+        ],
+        "title": "RemediationTicket",
+        "type": "object"
+      },
+      "ReportedStatus": {
+        "enum": [
+          "COMPLETE",
+          "PARTIALLY_COMPLETE",
+          "NOT_STARTED"
+        ],
+        "title": "ReportedStatus",
+        "type": "string"
+      },
+      "ResourceAssessment": {
+        "properties": {
+          "action": {
+            "description": "Policy action from deletion_rules.csv: DELETE, REDACT, ANONYMIZE, RETAIN",
+            "title": "Action",
+            "type": "string"
+          },
+          "category": {
+            "title": "Category",
+            "type": "string"
+          },
+          "evidence": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Evidence",
+            "type": "array"
+          },
+          "state": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Reconstructed state at audit_at",
+            "title": "State"
+          }
+        },
+        "required": [
+          "category",
+          "action"
+        ],
+        "title": "ResourceAssessment",
+        "type": "object"
+      },
+      "State": {
+        "enum": [
+          "ABSENT",
+          "ACTIVE",
+          "ANONYMIZED",
+          "BLOCKED",
+          "DISABLED",
+          "PRESENT",
+          "REDACTED"
+        ],
+        "title": "State",
+        "type": "string"
+      },
+      "Step": {
+        "additionalProperties": false,
+        "description": "One finding, remediation or verification step. The operation fixes the phase and the state.",
+        "properties": {
+          "evidence_id": {
+            "default": "",
+            "title": "Evidence Id",
+            "type": "string"
+          },
+          "operation": {
+            "$ref": "#/components/schemas/Operation"
+          },
+          "phase": {
+            "$ref": "#/components/schemas/Phase"
+          },
+          "resource_id": {
+            "minLength": 1,
+            "title": "Resource Id",
+            "type": "string"
+          },
+          "state": {
+            "$ref": "#/components/schemas/State"
+          },
+          "step_no": {
+            "minimum": 1.0,
+            "title": "Step No",
+            "type": "integer"
+          },
+          "system_id": {
+            "minLength": 1,
+            "title": "System Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "step_no",
+          "phase",
+          "system_id",
+          "resource_id",
+          "operation",
+          "state"
+        ],
+        "title": "Step",
+        "type": "object"
+      },
+      "Usage": {
+        "properties": {
+          "cached_llm_calls": {
+            "default": 0,
+            "title": "Cached Llm Calls",
+            "type": "integer"
+          },
+          "cost_usd": {
+            "default": 0.0,
+            "title": "Cost Usd",
+            "type": "number"
+          },
+          "input_tokens": {
+            "default": 0,
+            "title": "Input Tokens",
+            "type": "integer"
+          },
+          "llm_calls": {
+            "default": 0,
+            "title": "Llm Calls",
+            "type": "integer"
+          },
+          "output_tokens": {
+            "default": 0,
+            "title": "Output Tokens",
+            "type": "integer"
+          }
+        },
+        "title": "Usage",
+        "type": "object"
+      },
+      "ValidationError": {
+        "properties": {
+          "ctx": {
+            "title": "Context",
+            "type": "object"
+          },
+          "input": {
+            "title": "Input"
+          },
+          "loc": {
+            "items": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                }
+              ]
+            },
+            "title": "Location",
+            "type": "array"
+          },
+          "msg": {
+            "title": "Message",
+            "type": "string"
+          },
+          "type": {
+            "title": "Error Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "loc",
+          "msg",
+          "type"
+        ],
+        "title": "ValidationError",
+        "type": "object"
+      }
+    }
+  },
+  "info": {
+    "description": "Audits whether an erasure request really removed a person's data, and proposes an ordered remediation plan that a human approves before it is issued.",
+    "title": "GDPR Erasure Audit Agent",
+    "version": "0.2.0"
+  },
+  "openapi": "3.1.0",
+  "paths": {
+    "/healthz": {
+      "get": {
+        "operationId": "healthz_healthz_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Healthz Healthz Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Liveness",
+        "tags": [
+          "ops"
+        ]
+      }
+    },
+    "/readyz": {
+      "get": {
+        "operationId": "readyz_readyz_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Readyz Readyz Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Readiness: dataset loaded and backend reachable",
+        "tags": [
+          "ops"
+        ]
+      }
+    },
+    "/v1/audits": {
+      "get": {
+        "operationId": "list_audits_v1_audits_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "state",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "$ref": "#/components/schemas/AuditState"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "State"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 100,
+              "maximum": 500,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/AuditRecord"
+                  },
+                  "title": "Response List Audits V1 Audits Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "List Audits",
+        "tags": [
+          "audits"
+        ]
+      },
+      "post": {
+        "operationId": "create_audit_v1_audits_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DeletionRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Same request already submitted; existing audit returned"
+          },
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuditRecord"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "409": {
+            "description": "case_id reused with different fields"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Create Audit",
+        "tags": [
+          "audits"
+        ]
+      }
+    },
+    "/v1/audits/batch": {
+      "post": {
+        "operationId": "create_audits_v1_audits_batch_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BatchRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BatchResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Create Audits",
+        "tags": [
+          "audits"
+        ]
+      }
+    },
+    "/v1/audits/{audit_id}": {
+      "get": {
+        "operationId": "get_audit_v1_audits__audit_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "audit_id",
+            "required": true,
+            "schema": {
+              "title": "Audit Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuditRecord"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Audit",
+        "tags": [
+          "audits"
+        ]
+      }
+    },
+    "/v1/audits/{audit_id}/approval": {
+      "post": {
+        "operationId": "decide_v1_audits__audit_id__approval_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "audit_id",
+            "required": true,
+            "schema": {
+              "title": "Audit Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Approval"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuditRecord"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "409": {
+            "description": "Audit is not awaiting approval"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Human approval or rejection of the remediation plan",
+        "tags": [
+          "audits"
+        ]
+      }
+    },
+    "/v1/policy/rules": {
+      "get": {
+        "operationId": "policy_rules_v1_policy_rules_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/PolicyRule"
+                  },
+                  "title": "Response Policy Rules V1 Policy Rules Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Policy Rules",
+        "tags": [
+          "policy"
+        ]
+      }
+    }
+  }
+}

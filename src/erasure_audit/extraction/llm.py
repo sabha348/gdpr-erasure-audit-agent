@@ -31,6 +31,8 @@ RETRIES, RETRY_BASE_S = 4, 5  # transient API errors: retry after 5 s, 15 s, 45 
 # Gemini: ai.google.dev/gemini-api/docs/pricing, paid standard tier, prices valid through 2026-12-31.
 PRICING = {
     "gemini-3.8-flash": (0.75, 3.75, 0.0, 0.075),
+    # gemini-3.6-flash: introductory standard-tier price through 2026-12-31; $1.50 / $7.50 from 2027-01-01.
+    "gemini-3.6-flash": (0.75, 3.75, 0.0, 0.075),
     "gemini-3.5-flash-lite": (0.30, 2.50, 0.0, 0.03),
     "claude-opus-5-5": (4.00, 20.00, 5.00, 0.20),
     "claude-sonnet-5-5": (2.00, 10.00, 2.50, 0.20),
@@ -59,6 +61,19 @@ def record_usage(record: dict) -> None:
         calls.append(record)
 
 
+def summarise_usage(calls: list[dict]) -> dict:
+    """Fresh (billed) calls vs cache hits, tokens and list-price cost for a captured block."""
+    fresh = [c for c in calls if not c.get("cached")]
+    return {
+        "llm_calls": len(fresh),
+        "cached_llm_calls": len(calls) - len(fresh),
+        "input_tokens": sum(c.get("input_tokens", 0) for c in fresh),
+        "output_tokens": sum(c.get("output_tokens", 0) + c.get("thinking_tokens", 0) for c in fresh),
+        "cost_usd": sum(c.get("estimated_cost_usd") or 0.0 for c in fresh),
+        "api_retries": sum(max(0, (c.get("attempts") or 1) - 1) for c in fresh),
+    }
+
+
 class LLMUnavailable(RuntimeError):
     """No provider configured or no usable key; the caller records the file as needs_llm and continues."""
 
@@ -71,7 +86,7 @@ def settings() -> dict:
     cfg = get_settings()
     return {
         "provider": cfg.llm_provider,
-        "model": cfg.llm_model or DEFAULT_MODELS.get(cfg.llm_provider),
+        "model": cfg.model_for() or DEFAULT_MODELS.get(cfg.llm_provider),
         "thinking": cfg.llm_thinking,
         "effort": cfg.llm_effort,
         "key": cfg.api_key(),
@@ -86,6 +101,12 @@ def estimate_cost(model: str, usage: dict) -> float | None:
     billed_in = usage["input_tokens"] - usage["cache_read_input_tokens"]
     return round((billed_in * p_in + (usage["output_tokens"] + usage["thinking_tokens"]) * p_out
                   + usage["cache_creation_input_tokens"] * p_cw + usage["cache_read_input_tokens"] * p_cr) / 1e6, 6)
+
+
+def is_daily_quota(message: str) -> bool:
+    """A per-day quota 429 will not clear within any retry budget: give up at once instead of backing off."""
+    m = message.lower()
+    return "per day" in m or "perday" in m or "requests_per_day" in m
 
 
 # --------------------------------------------------------------------------------------------- Gemini
@@ -122,6 +143,8 @@ def _gemini(cfg, system, user_text, attachments, schema, record):
                 response = client.models.generate_content(model=cfg["model"], contents=contents, config=config)
                 break
             except errors.APIError as e:  # overload (503), other 5xx and rate limits (429) are transient
+                if e.code == 429 and is_daily_quota(str(e.message)):
+                    raise LLMUnavailable(f"Gemini daily quota exhausted: {e.message}") from e
                 if attempt > RETRIES or not (e.code == 429 or (e.code or 0) >= 500):
                     raise
                 time.sleep(RETRY_BASE_S * 3 ** (attempt - 1))

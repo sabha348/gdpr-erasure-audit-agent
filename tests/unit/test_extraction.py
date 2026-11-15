@@ -2,10 +2,10 @@ import sqlite3
 
 import pytest
 
-from conftest import DATASET
 from erasure_audit.extraction.common import scan_identifiers
 from erasure_audit.extraction.log_parser import parse_line
 from erasure_audit.extraction.sql_parser import parse_sql
+from paths import DATASET
 
 
 def test_sql_dump_cannot_attach_other_databases(tmp_path):

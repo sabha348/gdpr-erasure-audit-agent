@@ -7,7 +7,7 @@ import time
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
 
-from ..extraction.llm import capture_usage
+from ..extraction.llm import capture_usage, summarise_usage
 from ..pipeline import Options, build
 from .cases import LabelledCase
 from .metrics import aggregate, score_case
@@ -26,19 +26,13 @@ class CaseResult:
     input_tokens: int = 0
     output_tokens: int = 0
     cost_usd: float = 0.0
+    api_retries: int = 0
     low_confidence: list[str] = field(default_factory=list)
     steps: list[dict] = field(default_factory=list)
 
 
 def _usage(calls: list[dict]) -> dict:
-    fresh = [c for c in calls if not c.get("cached")]
-    return {
-        "llm_calls": len(fresh),
-        "cached_llm_calls": len(calls) - len(fresh),
-        "input_tokens": sum(c.get("input_tokens", 0) for c in fresh),
-        "output_tokens": sum(c.get("output_tokens", 0) + c.get("thinking_tokens", 0) for c in fresh),
-        "cost_usd": sum(c.get("estimated_cost_usd") or 0.0 for c in fresh),
-    }
+    return summarise_usage(calls)
 
 
 def run_cases(cases: list[LabelledCase], dataset_dir: Path, options: Options = Options()) -> tuple[list[CaseResult], dict]:
@@ -79,6 +73,9 @@ def summarise(results: list[CaseResult]) -> dict:
         "input_tokens": sum(r.input_tokens for r in results),
         "output_tokens": sum(r.output_tokens for r in results),
         "cost_usd": sum(r.cost_usd for r in results),
+        "api_retries": sum(r.api_retries for r in results),
+        "cases_with_retries": sum(r.api_retries > 0 for r in results),
+        "classifier_fallbacks": sum("classification:rules_fallback" in r.low_confidence for r in results),
         "latency_ms_p50": percentile(lat, 50), "latency_ms_p95": percentile(lat, 95),
         "latency_ms_mean": sum(lat) / n,
     })

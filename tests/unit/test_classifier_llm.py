@@ -2,10 +2,10 @@
 public dataset; the fake model's answer is arbitrary and only exercises caching, fallback and disagreement."""
 import pytest
 
-from conftest import DATASET
 from erasure_audit.contract import read_csv
 from erasure_audit.extraction import llm
 from erasure_audit.pipeline import classify as clf
+from paths import DATASET
 
 TEXT = read_csv(DATASET / "sample_deletion_requests.csv")[0]["request_text"]
 
@@ -50,3 +50,9 @@ def test_unavailable_model_falls_back_to_rules(monkeypatch):
     result = clf.classify_llm(TEXT + " unique suffix so the cache misses")
     assert result["method"] == "rules_fallback"
     assert result["is_deletion"] == clf.classify(TEXT + " unique suffix so the cache misses")["is_deletion"]
+
+
+def test_daily_quota_is_not_retried():
+    msg = "Quota exceeded for metric: ..._free_tier_requests, description: Generate content requests per day limit exceeded"
+    assert llm.is_daily_quota(msg)
+    assert not llm.is_daily_quota("Resource exhausted: requests per minute")

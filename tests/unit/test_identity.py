@@ -1,6 +1,6 @@
 """Identity resolution, checked against the dataset's own audit log (no invented people)."""
-from conftest import DATASET
 from erasure_audit.contract import read_csv
+from paths import DATASET
 
 AUDIT = read_csv(DATASET / "user_audit_log.csv")
 IDENTITIES = {r["user_id"]: r for r in read_csv(DATASET / "user_identities.csv")}

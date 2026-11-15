@@ -3,9 +3,9 @@ import json
 import pytest
 from pydantic import ValidationError
 
-from conftest import DATASET, ROOT
 from erasure_audit.evaluation.cases import LabelledCase, json_schema, load_cases, load_custom
 from erasure_audit.models import Step
+from paths import DATASET, ROOT
 
 
 def test_public_samples_load_as_32_labelled_cases():

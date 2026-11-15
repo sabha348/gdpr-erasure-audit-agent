@@ -1,13 +1,10 @@
 from __future__ import annotations
 
 import os
-from pathlib import Path
 
 import pytest
 
-ROOT = Path(__file__).resolve().parent.parent
-DATASET = ROOT / "dataset"
-GOLDEN = ROOT / "tests" / "golden"
+from paths import DATASET
 
 
 @pytest.fixture(scope="session", autouse=True)
@@ -17,7 +14,8 @@ def _isolated_settings(tmp_path_factory):
     saved = dict(os.environ)
     os.environ.update({"ERASURE_DATASET_DIR": str(DATASET), "ERASURE_CACHE_DIR": str(cache),
                        "ERASURE_ENV_FILE": str(cache / "no.env"), "LLM_PROVIDER": "none"})
-    for key in ("GEMINI_API_KEY", "ANTHROPIC_API_KEY"):
+    for key in ("GEMINI_API_KEY", "GOOGLE_GENERATIVE_AI_API_KEY", "GOOGLE_API_KEY", "ANTHROPIC_API_KEY",
+                "GEMINI_MODEL", "EVIDENCE_LLM_MODEL"):
         os.environ.pop(key, None)
     from erasure_audit.settings import reset_settings
     reset_settings()

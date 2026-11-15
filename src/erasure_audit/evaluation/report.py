@@ -53,6 +53,8 @@ SUMMARY_ROWS = [
     ("tokens per case", lambda m: f"{m['tokens_per_case']:,.0f}"),
     ("cost total / per case (USD, list price)", lambda m: f"${m['cost_usd']:.4f} / ${m['cost_per_case_usd']:.5f}"),
     ("latency p50 / p95 (ms)", lambda m: f"{m['latency_ms_p50']:.1f} / {m['latency_ms_p95']:.1f}"),
+    ("API retries (429 / 5xx), cases affected", lambda m: f"{m['api_retries']}, {m['cases_with_retries']}"),
+    ("classifier fell back to rules (cases)", lambda m: str(m["classifier_fallbacks"])),
 ]
 
 
@@ -113,7 +115,8 @@ def render(results: list[CaseResult], by_slice: dict, meta: dict, cv: dict | Non
            + (f" (`{meta['llm_model']}`)" if meta["llm_model"] else "") + f". Pipeline start-up: {meta['startup_s']} s.",
            "", "## Summary", "", *summary_table(by_slice), "",
            "Cost is at paid-tier list price (`extraction/llm.py` PRICING); the Gemini free tier bills $0. "
-           "Latency is per case inside a warm process (dataset and evidence loaded once at start-up).", ""]
+           "Latency is per case inside a warm process (dataset and evidence loaded once at start-up) and includes "
+           "the client's backoff on rate-limited (429) or failed (5xx) calls; see the retries row.", ""]
     if cv:
         out += ["## Leave-one-out cross-validation (public samples)", "", *cv_table(cv), ""]
     out += ["## Per case", "", "| case | slice | expected | predicted | verdict | step F1 | remediation F1 | exact | "

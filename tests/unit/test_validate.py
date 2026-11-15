@@ -4,9 +4,9 @@ import json
 
 import pytest
 
-from conftest import DATASET
 from erasure_audit.contract import read_csv
 from erasure_audit.evaluation.validate import load_evidence_times, validate_file, validate_steps
+from paths import DATASET
 
 SAMPLES = {r["case_id"]: r for r in read_csv(DATASET / "sample_output.csv")}
 REQUESTS = {r["case_id"]: r for r in read_csv(DATASET / "sample_deletion_requests.csv")}

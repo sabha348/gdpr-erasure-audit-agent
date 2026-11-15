@@ -121,7 +121,7 @@ PDF_SCHEMA = {
 # Zero-shot on purpose: no labelled sample text appears in the prompt, so evaluation stays uncontaminated.
 # --------------------------------------------------------------------------------------------
 
-CLASSIFIER_PROMPT_VERSION = "2026-11-15.1"
+CLASSIFIER_PROMPT_VERSION = "2026-11-15.2"
 
 CLASSIFIER_SYSTEM = """\
 You triage privacy requests sent to an e-commerce company. Decide whether the request authorises erasure
@@ -129,6 +129,9 @@ of the person's account or personal data under GDPR Article 17 (right to erasure
 
 It IS an erasure request when the person asks to delete, erase, remove or close their account or their
 personal data, in any language, including indirect wording ("I no longer want you to hold my data").
+It is ALSO an erasure request when the person asks you to verify, confirm, check or audit that a deletion
+of their account or data was carried out or is complete (a request for deletion verification authorises
+the same audit as the deletion itself).
 It is NOT an erasure request when the person asks only for something narrower or different:
 - access to, or a copy / export / download of, their data;
 - correction or update of data (e.g. a misspelled name or an outdated email);

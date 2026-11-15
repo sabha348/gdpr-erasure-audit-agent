@@ -1,6 +1,6 @@
 # PLAN — from challenge entry to production-grade service
 
-Status: **approved 2026-11-15.** M1 done (PR from `upgrade/eval-temporal`); M2 next.
+Status: **approved 2026-11-15.** M1 merged (PR #1). M2 done (PR from `upgrade/m2-api`); M3 next.
 
 ## Decisions taken with the owner (2026-11-15)
 
