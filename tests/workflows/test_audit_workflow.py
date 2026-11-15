@@ -139,3 +139,26 @@ async def test_history_replays_deterministically(env, make_worker):
         await h.result()
         history = await h.fetch_history()
     await Replayer(workflows=[ErasureAuditWorkflow], data_converter=pydantic_data_converter).replay_workflow(history)
+
+
+class SlowIssue(AuditActivities):
+    """Remediation cannot be issued yet (e.g. the outbox volume is not writable): retried."""
+
+    @activity.defn(name="issue_remediation")
+    def issue_remediation(self, inp):
+        raise ApplicationError("outbox not writable", type="PermissionError")
+
+
+async def test_decision_is_visible_while_remediation_is_retried(env, make_worker):
+    queue, _, worker, _ = make_worker(SlowIssue)
+    async with worker:
+        h = await start(env, queue, sample("INCOMPLETE"))
+        await wait_for(h, AuditState.AWAITING_APPROVAL)
+        await h.signal(ErasureAuditWorkflow.approve_remediation, Approval(decision="approve", approver="dpo"))
+        for _ in range(100):
+            rec = await h.query(ErasureAuditWorkflow.status)
+            if rec.approval:
+                break
+            await asyncio.sleep(0.05)
+        assert rec.approval.approver == "dpo" and rec.state is AuditState.AWAITING_APPROVAL
+        await h.terminate("test done")

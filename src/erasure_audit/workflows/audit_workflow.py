@@ -96,7 +96,6 @@ class ErasureAuditWorkflow:
             return self._update(state=AuditState.EXPIRED, error="no approval decision before the timeout")
 
         approval = self._approval
-        self._update(approval=approval, approved_at=_now())
         if approval.decision is ApprovalDecision.REJECT:
             return self._update(state=AuditState.REJECTED)
         try:
@@ -112,6 +111,7 @@ class ErasureAuditWorkflow:
         """Human decision. Only the first decision on an AWAITING_APPROVAL audit counts; others are ignored."""
         if self._record and self._record.state is AuditState.AWAITING_APPROVAL and self._approval is None:
             self._approval = approval
+            self._update(approval=approval, approved_at=_now())  # visible to queries before remediation finishes
         else:
             workflow.logger.warning("approval signal ignored", extra={"state": getattr(self._record, "state", None)})
 

@@ -76,9 +76,13 @@ async def get_audit(audit_id: str, backend: Backend) -> AuditRecord:
 
 @router.post("/v1/audits/{audit_id}/approval", tags=["audits"], response_model=AuditRecord,
              summary="Human approval or rejection of the remediation plan",
-             responses={409: {"description": "Audit is not awaiting approval"}})
-async def decide(audit_id: str, body: Approval, backend: Backend) -> AuditRecord:
-    return await backend.decide(audit_id, body)
+             responses={202: {"description": "Decision recorded; remediation still being issued (poll GET)"},
+                        409: {"description": "Audit is not awaiting approval"}})
+async def decide(audit_id: str, body: Approval, backend: Backend, response: Response) -> AuditRecord:
+    record = await backend.decide(audit_id, body)
+    if record.state is AuditState.AWAITING_APPROVAL:  # temporal mode: the issue_remediation activity is still running
+        response.status_code = status.HTTP_202_ACCEPTED
+    return record
 
 
 @router.get("/v1/policy/rules", tags=["policy"], response_model=list[PolicyRule])

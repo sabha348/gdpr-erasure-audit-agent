@@ -911,6 +911,9 @@
             },
             "description": "Successful Response"
           },
+          "202": {
+            "description": "Decision recorded; remediation still being issued (poll GET)"
+          },
           "409": {
             "description": "Audit is not awaiting approval"
           },
