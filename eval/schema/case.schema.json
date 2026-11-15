@@ -1,0 +1,196 @@
+{
+  "$defs": {
+    "DeletionRequest": {
+      "additionalProperties": false,
+      "properties": {
+        "audit_at": {
+          "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}Z$",
+          "title": "Audit At",
+          "type": "string"
+        },
+        "case_id": {
+          "pattern": "^[A-Za-z0-9_.-]+$",
+          "title": "Case Id",
+          "type": "string"
+        },
+        "email": {
+          "minLength": 3,
+          "title": "Email",
+          "type": "string"
+        },
+        "reported_at": {
+          "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}Z$",
+          "title": "Reported At",
+          "type": "string"
+        },
+        "reported_status": {
+          "$ref": "#/$defs/ReportedStatus"
+        },
+        "request_text": {
+          "minLength": 1,
+          "title": "Request Text",
+          "type": "string"
+        },
+        "requested_at": {
+          "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}Z$",
+          "title": "Requested At",
+          "type": "string"
+        }
+      },
+      "required": [
+        "case_id",
+        "email",
+        "requested_at",
+        "reported_status",
+        "reported_at",
+        "audit_at",
+        "request_text"
+      ],
+      "title": "DeletionRequest",
+      "type": "object"
+    },
+    "DeletionStatus": {
+      "enum": [
+        "COMPLETE",
+        "INCOMPLETE",
+        "NOT_APPLICABLE"
+      ],
+      "title": "DeletionStatus",
+      "type": "string"
+    },
+    "Operation": {
+      "enum": [
+        "REPORT_REMAINING_RECORD",
+        "REPORT_EXPOSED_PII",
+        "REPORT_ACTIVE_DATA_FLOW",
+        "REPORT_RESTORE_RISK",
+        "DISABLE_DATA_FLOW",
+        "BLOCK_RESTORE",
+        "DELETE_RECORD",
+        "REDACT_RECORD",
+        "ANONYMIZE_RECORD",
+        "VERIFY_RECORD_ABSENT",
+        "VERIFY_RECORD_PRESENT",
+        "VERIFY_RECORD_REDACTED",
+        "VERIFY_RECORD_ANONYMIZED",
+        "VERIFY_DATA_FLOW_DISABLED",
+        "VERIFY_RESTORE_BLOCKED"
+      ],
+      "title": "Operation",
+      "type": "string"
+    },
+    "Phase": {
+      "enum": [
+        "FINDING",
+        "REMEDIATION",
+        "VERIFICATION"
+      ],
+      "title": "Phase",
+      "type": "string"
+    },
+    "ReportedStatus": {
+      "enum": [
+        "COMPLETE",
+        "PARTIALLY_COMPLETE",
+        "NOT_STARTED"
+      ],
+      "title": "ReportedStatus",
+      "type": "string"
+    },
+    "State": {
+      "enum": [
+        "ABSENT",
+        "ACTIVE",
+        "ANONYMIZED",
+        "BLOCKED",
+        "DISABLED",
+        "PRESENT",
+        "REDACTED"
+      ],
+      "title": "State",
+      "type": "string"
+    },
+    "Step": {
+      "additionalProperties": false,
+      "description": "One finding, remediation or verification step. The operation fixes the phase and the state.",
+      "properties": {
+        "evidence_id": {
+          "default": "",
+          "title": "Evidence Id",
+          "type": "string"
+        },
+        "operation": {
+          "$ref": "#/$defs/Operation"
+        },
+        "phase": {
+          "$ref": "#/$defs/Phase"
+        },
+        "resource_id": {
+          "minLength": 1,
+          "title": "Resource Id",
+          "type": "string"
+        },
+        "state": {
+          "$ref": "#/$defs/State"
+        },
+        "step_no": {
+          "minimum": 1,
+          "title": "Step No",
+          "type": "integer"
+        },
+        "system_id": {
+          "minLength": 1,
+          "title": "System Id",
+          "type": "string"
+        }
+      },
+      "required": [
+        "step_no",
+        "phase",
+        "system_id",
+        "resource_id",
+        "operation",
+        "state"
+      ],
+      "title": "Step",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "expected_status": {
+      "$ref": "#/$defs/DeletionStatus"
+    },
+    "expected_steps": {
+      "items": {
+        "$ref": "#/$defs/Step"
+      },
+      "title": "Expected Steps",
+      "type": "array"
+    },
+    "note": {
+      "default": "",
+      "description": "Why this case exists / what it tests",
+      "title": "Note",
+      "type": "string"
+    },
+    "request": {
+      "$ref": "#/$defs/DeletionRequest"
+    },
+    "slice": {
+      "default": "custom",
+      "enum": [
+        "public_sample",
+        "custom"
+      ],
+      "title": "Slice",
+      "type": "string"
+    }
+  },
+  "required": [
+    "request",
+    "expected_status"
+  ],
+  "title": "LabelledCase",
+  "type": "object"
+}

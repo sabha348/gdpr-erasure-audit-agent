@@ -15,13 +15,16 @@ def read_requests(path: Path) -> list[dict]:
         return list(csv.DictReader(f))
 
 
-def build(dataset_dir: Path, options: Options = Options()) -> Pipeline:
+def build(dataset_dir: Path, options: Options = Options(), extra_requests: list[dict] | None = None) -> Pipeline:
     """The activity-batch account matcher needs every request the dataset knows about (sample and evaluation),
-    because their deletion batches interleave in the same activity stream."""
+    because their deletion batches interleave in the same activity stream. `extra_requests` (for example
+    hand-written evaluation cases) join that context so they compete for accounts like any other request."""
     context = []
     for name in ("deletion_requests.csv", "sample_deletion_requests.csv"):
         if (dataset_dir / name).exists():
             context += read_requests(dataset_dir / name)
+    known = {q["case_id"] for q in context}
+    context += [q for q in extra_requests or [] if q["case_id"] not in known]
     return Pipeline(dataset_dir, options, context)
 
 
