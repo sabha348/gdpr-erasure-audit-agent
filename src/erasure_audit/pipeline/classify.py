@@ -92,7 +92,8 @@ def classify_llm(text: str) -> dict:
                 user_text=prompts.CLASSIFIER_USER.format(text=text.strip()), attachments=[],
                 schema=prompts.CLASSIFIER_SCHEMA, usage_log=get_settings().usage_log)
         except (llm.LLMUnavailable, llm.LLMError) as e:
-            return {**rules, "method": "rules_fallback", "llm_error": str(e)}
+            kind = "unavailable" if isinstance(e, llm.LLMUnavailable) else "transient"
+            return {**rules, "method": "rules_fallback", "llm_error": str(e), "llm_error_kind": kind}
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text(json.dumps({"answer": answer, "call": call}, ensure_ascii=False), encoding="utf-8")
     return {

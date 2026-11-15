@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import collections
 import re
+from dataclasses import dataclass
 from datetime import timedelta
 from pathlib import Path
 
@@ -36,6 +37,21 @@ RECREATE_RE = re.compile(r"repopulated downstream resource (\S+?)\.?$")
 BATCH_GAP = {"policy": timedelta(minutes=45), "other": timedelta(minutes=105)}  # tie-break only
 JOIN_BEFORE, JOIN_AFTER = timedelta(minutes=90), timedelta(minutes=10)
 STATUS_RESULT = {"COMPLETE": "SUCCESS", "PARTIALLY_COMPLETE": "PARTIAL", "NOT_STARTED": "FAILED"}
+
+
+@dataclass(frozen=True)
+class EvidenceScope:
+    """Which evidence one assessment may use. `files=None` means every file; otherwise only the listed file_ids
+    (what the per-source collectors returned). `activity=False` excludes system_activity.csv rows. The audit_at
+    cut-off applies on top of the scope. Start-up context (the cross-request account join) is not scoped."""
+    files: frozenset[str] | None = None
+    activity: bool = True
+
+    def file_ok(self, file_id: str | None) -> bool:
+        return self.files is None or file_id in self.files
+
+
+ALL_EVIDENCE = EvidenceScope()
 
 
 def _file_no(fid: str) -> int:
@@ -74,14 +90,14 @@ class Pipeline:
                 tokens.add(a["old_value"].lower())
         return uid, tokens
 
-    def linked_resources(self, tokens: set, audit_at: str) -> dict[str, set]:
+    def linked_resources(self, tokens: set, audit_at: str, scope: EvidenceScope = ALL_EVIDENCE) -> dict[str, set]:
         linked = collections.defaultdict(set)
         for t in tokens:
             for o in self.ds.by_token.get(t, []):
                 rid = o.resource_id
-                if rid and o.file_captured_at <= audit_at and prefix_of(rid) in PREFIX_SYSTEM:
+                if rid and o.file_captured_at <= audit_at and scope.file_ok(o.file_id) and prefix_of(rid) in PREFIX_SYSTEM:
                     linked[rid].add(o.file_id)
-        for link in self.ds.links:
+        for link in self.ds.links if scope.activity else ():
             if link["activity"]["event_time"] <= audit_at and (link["user_id"] in tokens or link["email"] in tokens):
                 if prefix_of(link["resource_id"]) in PREFIX_SYSTEM:
                     linked[link["resource_id"]].add(link["activity"]["activity_id"])
@@ -175,10 +191,10 @@ class Pipeline:
         return assigned
 
     # ------------------------------------------------------------------ state reconstruction
-    def assertions(self, rid: str, linked: dict, q: dict) -> list[Assertion]:
+    def assertions(self, rid: str, linked: dict, q: dict, scope: EvidenceScope = ALL_EVIDENCE) -> list[Assertion]:
         audit_at, out = q["audit_at"], []
         for o in self.ds.by_resource.get(rid, []):
-            if o.file_captured_at > audit_at:
+            if o.file_captured_at > audit_at or not scope.file_ok(o.file_id):
                 continue
             for r, kind, hint, ret in interpret(o):
                 if r == rid and kind:
@@ -189,7 +205,7 @@ class Pipeline:
         subject_files = {f for fs in linked.values() for f in fs}
         for fid, units in self.units.items():
             doc = self.ds.docs[fid]
-            if doc["captured_at"] > audit_at:
+            if doc["captured_at"] > audit_at or not scope.file_ok(fid):
                 continue
             for unit_system, at, present, full in units:
                 if unit_system != system or rid in present or at > audit_at:
@@ -198,7 +214,7 @@ class Pipeline:
                     out.append(Assertion(rid, "ABSENT", at, fid, doc["captured_at"]))
         # activity: checks are observations, policy results are claims, sync/restore recreate records
         flow_mode = self.opt.flow_precedence
-        for a in self.ds.activity_by_resource.get(rid, []):
+        for a in self.ds.activity_by_resource.get(rid, []) if scope.activity else ():
             if a["event_time"] > audit_at:
                 continue
             et, ok = a["event_type"], a["reported_result"] == "SUCCESS"
@@ -217,7 +233,7 @@ class Pipeline:
                 continue
             out.append(Assertion(rid, kind, a["event_time"], None, None, activity_id=a["activity_id"],
                                  claim=claim and flow_mode != "claims_as_observations"))
-        for a in self.recreated.get(rid, []):
+        for a in self.recreated.get(rid, []) if scope.activity else ():
             if a["event_time"] <= audit_at:
                 out.append(Assertion(rid, "PRESENT", a["event_time"], None, None, activity_id=a["activity_id"]))
         if self.opt.stale_evidence == "drop_before_request":
@@ -256,7 +272,8 @@ class Pipeline:
                     return h
         return PREFIX_CATEGORY[pre]
 
-    def action(self, rid: str, category: str, asserts: list[Assertion], audit_at: str) -> str:
+    def action(self, rid: str, category: str, asserts: list[Assertion], audit_at: str,
+               scope: EvidenceScope = ALL_EVIDENCE) -> str:
         if category in ("DATA_FLOW", "BACKUP_ARCHIVE"):
             return category
         action = self.actions.get(category, "DELETE")
@@ -265,7 +282,7 @@ class Pipeline:
             if until and until < audit_at:  # DECISIONS #8: retention expired -> ordinary deletion
                 return "DELETE"
             return "RETAIN"
-        if self.opt.treatment == "policy_with_activity_hint" and category not in ("USER_PROFILE", "ACCOUNT_TOMBSTONE"):
+        if self.opt.treatment == "policy_with_activity_hint" and scope.activity and category not in ("USER_PROFILE", "ACCOUNT_TOMBSTONE"):
             hinted = [HINT_ACTIONS[a["event_type"]] for a in self.ds.activity_by_resource.get(rid, [])
                       if a["source_system"] == "deletion_worker" and a["event_type"] in HINT_ACTIONS and a["event_time"] <= audit_at]
             if hinted:
@@ -338,9 +355,12 @@ class Pipeline:
         return chosen
 
     # ------------------------------------------------------------------ one case
-    def assess(self, q: dict) -> tuple[str, list[dict], dict]:
+    def assess(self, q: dict, scope: EvidenceScope = ALL_EVIDENCE,
+               classification: dict | None = None) -> tuple[str, list[dict], dict]:
+        """`classification` lets a caller that already classified the request (the workflow's classify activity)
+        pass the answer in instead of classifying twice."""
         diag = {"case_id": q["case_id"], "low_confidence": []}
-        cls = classify_with(self.opt.classifier, q["request_text"])
+        cls = classification or classify_with(self.opt.classifier, q["request_text"])
         diag["classification"] = cls
         if cls["confidence"] == "low":
             diag["low_confidence"].append(f"classification:{cls['method']}")
@@ -354,7 +374,7 @@ class Pipeline:
             diag["error"] = "requester email not found in identities or audit log"
             return "COMPLETE", [], diag
 
-        linked = self.linked_resources(tokens, q["audit_at"])
+        linked = self.linked_resources(tokens, q["audit_at"], scope)
         accounts = [r for r in linked if prefix_of(r) == "account"]
         account_source = "evidence"
         if not accounts and q["case_id"] in self.joined_accounts:
@@ -365,7 +385,7 @@ class Pipeline:
         for rid in sorted(linked):
             if prefix_of(rid) in IGNORED_PREFIXES:
                 continue
-            resources[rid] = self.assertions(rid, linked, q)
+            resources[rid] = self.assertions(rid, linked, q, scope)
         if len(accounts) > 1:  # keep the account observed most recently (sample case_17)
             def last_seen(r):
                 return max((a.at for a in resources[r]), default="")
@@ -384,14 +404,15 @@ class Pipeline:
             kind = self.state(asserts, q["requested_at"])
             if prefix_of(rid) == "account" and kind not in ("PRESENT", "EXPOSED"):
                 kind = kind or "ABSENT"  # DECISIONS #7: the account is always verified absent
-            action = "DELETE" if prefix_of(rid) == "account" else self.action(rid, category, asserts, q["audit_at"])
+            action = "DELETE" if prefix_of(rid) == "account" else self.action(rid, category, asserts, q["audit_at"], scope)
             f, r, v = self.plan(rid, action, kind)
             system = PREFIX_SYSTEM[prefix_of(rid)]
             for phase, ops in (("FINDING", f), ("REMEDIATION", r), ("VERIFICATION", v)):
                 for op, st in ops:
                     planned.append({"phase": phase, "system_id": system, "resource_id": rid, "operation": op, "state": st})
             for o in self.ds.by_resource.get(rid, []):
-                if o.raw["source"] == "image_fallback" and o.raw["fields"].get("transcription_contradicts_link")                         and o.file_captured_at <= q["audit_at"]:
+                if o.raw["source"] == "image_fallback" and o.raw["fields"].get("transcription_contradicts_link") \
+                        and o.file_captured_at <= q["audit_at"] and scope.file_ok(o.file_id):
                     diag["low_confidence"].append(f"state:{rid}:screenshot_contradicts_catalog:{o.file_id}")
             for level in ("low", "medium"):
                 if any(a.confidence == level for a in asserts):
@@ -411,7 +432,7 @@ class Pipeline:
             if p["phase"] == cited_phase:
                 ev = chosen.get(p["resource_id"])
                 if ev is None:  # no visible proof of this state: cite the case's best file, flagged
-                    fallback = fallback or self._fallback_citation(chosen, linked, q["audit_at"])
+                    fallback = fallback or self._fallback_citation(chosen, linked, q["audit_at"], scope)
                     ev = fallback or ""
                     diag["low_confidence"].append(f"citation:{p['resource_id']}:fallback")
                 p["evidence_id"] = ev
@@ -429,8 +450,10 @@ class Pipeline:
             diag["warning"] = "deletion request but no linked resources found"
         return status, steps, diag
 
-    def _fallback_citation(self, chosen: dict, linked: dict, audit_at: str) -> str | None:
+    def _fallback_citation(self, chosen: dict, linked: dict, audit_at: str,
+                           scope: EvidenceScope = ALL_EVIDENCE) -> str | None:
         if chosen:
             return collections.Counter(chosen.values()).most_common(1)[0][0]
-        files = {f for fs in linked.values() for f in fs if f in self.ds.docs and self.ds.docs[f]["captured_at"] <= audit_at}
+        files = {f for fs in linked.values() for f in fs
+                 if f in self.ds.docs and self.ds.docs[f]["captured_at"] <= audit_at and scope.file_ok(f)}
         return max(files, key=lambda f: (self.ds.docs[f]["captured_at"], -_file_no(f))) if files else None

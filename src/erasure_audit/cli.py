@@ -6,6 +6,7 @@
     erasure-audit eval [--set all|public|custom] [--cv] [--out DIR] [--option NAME=VALUE ...] [--check]
     erasure-audit score [--predictions CSV]          # legacy report: 32 public samples vs sample_output.csv
     erasure-audit serve [--host 0.0.0.0] [--port 8000]   # HTTP API (needs the api extra)
+    erasure-audit worker                               # Temporal worker (needs the worker extra)
     erasure-audit openapi > docs/openapi.json          # export the API schema
     erasure-audit sweep                              # one-factor-at-a-time option sweep on the samples
 
@@ -115,6 +116,12 @@ def main(argv=None) -> int:
         import uvicorn
         uvicorn.run("erasure_audit.api.app:create_app", factory=True, host=args.host, port=args.port,
                     log_config=None, access_log=False)  # RequestContextMiddleware logs requests
+        return 0
+    if command == "worker":
+        import asyncio
+
+        from .workflows.worker import run as run_worker
+        asyncio.run(run_worker())
         return 0
     if command == "openapi":
         import json

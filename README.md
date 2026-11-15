@@ -20,6 +20,7 @@ pip install -e '.[dev]'            # add ,llm for model-backed extraction/classi
 erasure-audit run                  # dataset/deletion_requests.csv -> output.csv
 erasure-audit eval --cv            # score on labelled cases (+ leave-one-out CV) -> eval/results/
 erasure-audit serve                # HTTP API on :8000 (docs/api.md)
+erasure-audit worker               # Temporal worker; API with ERASURE_EXECUTION_MODE=temporal (docs/workflows.md)
 pytest
 ```
 
