@@ -6,6 +6,7 @@
     erasure-audit eval [--set all|public|custom] [--cv] [--out DIR] [--option NAME=VALUE ...] [--check]
     erasure-audit score [--predictions CSV]          # legacy report: 32 public samples vs sample_output.csv
     erasure-audit serve [--host 0.0.0.0] [--port 8000]   # HTTP API (needs the api extra)
+    erasure-audit openapi > docs/openapi.json          # export the API schema
     erasure-audit sweep                              # one-factor-at-a-time option sweep on the samples
 
 `python -m erasure_audit ...` is equivalent. Evidence is read through the extraction cache; anything not cached
@@ -114,6 +115,12 @@ def main(argv=None) -> int:
         import uvicorn
         uvicorn.run("erasure_audit.api.app:create_app", factory=True, host=args.host, port=args.port,
                     log_config=None, access_log=False)  # RequestContextMiddleware logs requests
+        return 0
+    if command == "openapi":
+        import json
+
+        from .api.app import create_app
+        print(json.dumps(create_app(configure_logging=False).openapi(), indent=2, sort_keys=True))
         return 0
     if command == "extract":
         from .extraction.run import main as extract_main

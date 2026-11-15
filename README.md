@@ -19,6 +19,7 @@ remediation and verification plan as structured JSON.
 pip install -e '.[dev]'            # add ,llm for model-backed extraction/classification
 erasure-audit run                  # dataset/deletion_requests.csv -> output.csv
 erasure-audit eval --cv            # score on labelled cases (+ leave-one-out CV) -> eval/results/
+erasure-audit serve                # HTTP API on :8000 (docs/api.md)
 pytest
 ```
 
