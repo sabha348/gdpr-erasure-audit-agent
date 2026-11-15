@@ -3,7 +3,8 @@
     erasure-audit run [--requests CSV] [--output CSV] [--option NAME=VALUE ...]
     erasure-audit extract [--no-llm] [--only ids] [--force] [--show]
     erasure-audit validate [PREDICTIONS] [--requests CSV]
-    erasure-audit score [--predictions CSV]          # 32 public samples vs sample_output.csv
+    erasure-audit eval [--set all|public|custom] [--cv] [--out DIR] [--option NAME=VALUE ...] [--check]
+    erasure-audit score [--predictions CSV]          # legacy report: 32 public samples vs sample_output.csv
     erasure-audit sweep                              # one-factor-at-a-time option sweep on the samples
 
 `python -m erasure_audit ...` is equivalent. Evidence is read through the extraction cache; anything not cached
@@ -46,6 +47,54 @@ def cmd_run(argv) -> int:
     return 0
 
 
+def cmd_eval(argv) -> int:
+    from .evaluation import report
+    from .evaluation.cases import CUSTOM_DIR, load_cases
+    from .evaluation.cv import leave_one_out
+    from .evaluation.runner import run_cases as run_labelled
+    from .evaluation.runner import summarise_by_slice
+
+    ap = argparse.ArgumentParser(prog="erasure-audit eval", description="Score the agent on labelled cases.")
+    ap.add_argument("--set", default="all", choices=("all", "public", "custom"))
+    ap.add_argument("--custom-dir", default=str(CUSTOM_DIR))
+    ap.add_argument("--out", default=None, help="default: eval/results/<UTC timestamp>")
+    ap.add_argument("--option", action="append", default=[], metavar="NAME=VALUE")
+    ap.add_argument("--cv", action="store_true", help="add leave-one-out cross-validation of the option selection")
+    ap.add_argument("--check", action="store_true", help="only validate the labelled cases, then exit")
+    ap.add_argument("--min-verdict-accuracy", type=float, default=None, help="exit 1 if verdict accuracy is lower")
+    ap.add_argument("--min-step-f1", type=float, default=None, help="exit 1 if overall step F1 is lower")
+    args = ap.parse_args(argv)
+
+    dataset = Path(get_settings().dataset_dir)
+    cases = load_cases(dataset, args.set, Path(args.custom_dir))
+    if args.check:
+        print(f"{len(cases)} labelled cases valid ({', '.join(sorted({c.slice for c in cases})) or 'none'})")
+        return 0
+    if not cases:
+        print("no labelled cases found", file=sys.stderr)
+        return 2
+    results, info = run_labelled(cases, dataset, Options.parse(args.option))
+    by_slice = summarise_by_slice(results)
+    cv = leave_one_out(cases, dataset) if args.cv and any(c.slice == "public_sample" for c in cases) else None
+    from datetime import UTC, datetime
+    out = Path(args.out or Path("eval") / "results" / datetime.now(UTC).strftime("%Y%m%dT%H%M%SZ"))
+    path = report.write(out, results, by_slice, info, cv)
+    print("\n".join(report.summary_table(by_slice)))
+    if cv:
+        print()
+        print("\n".join(report.cv_table(cv)))
+    print(f"\nWrote {path}, results.csv and metrics.json")
+    overall = by_slice["all"]
+    failed = []
+    if args.min_verdict_accuracy is not None and overall["status_accuracy"] < args.min_verdict_accuracy:
+        failed.append(f"verdict accuracy {overall['status_accuracy']:.4f} < {args.min_verdict_accuracy}")
+    if args.min_step_f1 is not None and overall["step_f1"] < args.min_step_f1:
+        failed.append(f"step F1 {overall['step_f1']:.4f} < {args.min_step_f1}")
+    for f in failed:
+        print(f"REGRESSION: {f}", file=sys.stderr)
+    return 1 if failed else 0
+
+
 def main(argv=None) -> int:
     argv = list(sys.argv[1:] if argv is None else argv)
     if not argv or argv[0] in ("-h", "--help"):
@@ -54,6 +103,8 @@ def main(argv=None) -> int:
     command, rest = argv[0], argv[1:]
     if command == "run":
         return cmd_run(rest)
+    if command == "eval":
+        return cmd_eval(rest)
     if command == "extract":
         from .extraction.run import main as extract_main
         return extract_main(rest)
